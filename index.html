@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>畑ノート | 農作業日報</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2F5233">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="畑ノート">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Noto+Sans+JP:wght@400;500;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F4F6EE;
+  --surface:#FFFFFF;
+  --ink:#1E2A1C;
+  --ink-soft:#4B5A45;
+  --primary:#2F5233;
+  --primary-dark:#1F3A24;
+  --accent:#D98E2B;
+  --accent-soft:#F5E2C2;
+  --soil:#7A5230;
+  --soil-soft:#E9DCC9;
+  --sky:#5F8A9A;
+  --sky-soft:#E2EEF1;
+  --danger:#B4462E;
+  --danger-soft:#F6DFD8;
+  --line:#DCD9CB;
+  --radius:14px;
+  --safe-bottom:env(safe-area-inset-bottom, 0px);
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:'Noto Sans JP', sans-serif;
+  min-height:100vh;
+  padding-bottom:calc(78px + var(--safe-bottom));
+}
+h1,h2,h3,.disp{font-family:'Zen Kaku Gothic New', sans-serif;}
+button, select, input, textarea{font-family:inherit; font-size:16px;}
+.num{font-family:'Roboto Mono', monospace;}
+
+/* Header */
+.topbar{
+  background:var(--primary);
+  color:#fff;
+  padding:18px 18px 22px;
+  position:relative;
+  overflow:hidden;
+}
+.topbar::after{
+  content:"";
+  position:absolute; right:-30px; top:-30px;
+  width:140px; height:140px;
+  border-radius:50%;
+  background:rgba(255,255,255,0.06);
+}
+.topbar-row{display:flex; justify-content:space-between; align-items:flex-start; gap:10px; position:relative; z-index:1;}
+.farm-name{font-size:13px; opacity:0.85; margin:0 0 2px;}
+.today-date{font-family:'Zen Kaku Gothic New',sans-serif; font-weight:900; font-size:26px; margin:0; letter-spacing:0.02em;}
+.today-sub{font-size:12px; opacity:0.8; margin:4px 0 0;}
+.settings-btn{
+  background:rgba(255,255,255,0.14); border:none; color:#fff;
+  width:38px; height:38px; border-radius:10px; font-size:18px;
+  display:flex; align-items:center; justify-content:center; cursor:pointer;
+}
+.settings-panel{
+  margin-top:14px; background:rgba(255,255,255,0.1); border-radius:10px; padding:12px;
+  display:none; position:relative; z-index:1;
+}
+.settings-panel.open{display:block;}
+.settings-panel label{display:block; font-size:11px; opacity:0.85; margin-bottom:4px;}
+.settings-panel input{width:100%; padding:8px 10px; border-radius:8px; border:none; margin-bottom:8px;}
+.settings-panel .row-btns{display:flex; gap:8px;}
+.settings-panel button.save{background:var(--accent); color:var(--primary-dark); border:none; font-weight:700; padding:9px 14px; border-radius:8px; flex:1; cursor:pointer;}
+.settings-panel button.reset{background:transparent; color:#fff; border:1px solid rgba(255,255,255,0.4); padding:9px 14px; border-radius:8px; cursor:pointer;}
+
+main{padding:16px; max-width:640px; margin:0 auto;}
+.tab{display:none;}
+.tab.active{display:block;}
+
+/* Cards */
+.card{
+  background:var(--surface);
+  border-radius:var(--radius);
+  padding:16px;
+  margin-bottom:14px;
+  border:1px solid var(--line);
+}
+.card h2{font-size:15px; margin:0 0 12px; color:var(--primary-dark); display:flex; align-items:center; gap:8px;}
+.field{margin-bottom:12px;}
+.field label{display:block; font-size:12px; color:var(--ink-soft); margin-bottom:5px; font-weight:500;}
+.field input, .field select, .field textarea{
+  width:100%; padding:11px 12px; border:1.5px solid var(--line); border-radius:10px;
+  background:#FCFBF7; color:var(--ink);
+}
+.field textarea{resize:vertical; min-height:56px;}
+.link-btn{
+  background:none; border:none; color:var(--primary); font-size:12px; font-weight:700;
+  padding:6px 0 0; cursor:pointer; text-decoration:underline;
+}
+.field-manager{
+  display:none; margin-top:10px; background:#F5F3EA; border:1px solid var(--line);
+  border-radius:10px; padding:10px;
+}
+.field-manager.open{display:block;}
+.field-manager-row{
+  display:flex; justify-content:space-between; align-items:center;
+  padding:8px 4px; border-bottom:1px dashed var(--line); font-size:14px;
+}
+.field-manager-row:last-child{border-bottom:none;}
+.field-manager-row button{
+  background:none; border:none; color:var(--danger); font-size:12px; cursor:pointer; padding:4px 6px;
+}
+.field-manager-empty{font-size:12px; color:var(--ink-soft); padding:6px 4px;}
+.field-manager-add{display:flex; gap:8px; margin-top:8px;}
+.field-manager-add input{flex:1; padding:9px 10px; border:1.5px solid var(--line); border-radius:8px; background:#fff;}
+.field-manager-add .btn{padding:9px 14px; min-height:auto;}
+.two-col{display:flex; gap:10px;}
+.two-col > .field{flex:1;}
+.duration-hint{font-size:12px; color:var(--ink-soft); margin-top:4px;}
+
+.btn{
+  border:none; border-radius:10px; padding:12px 16px; font-weight:700; cursor:pointer;
+  display:inline-flex; align-items:center; justify-content:center; gap:6px; min-height:48px;
+}
+.btn-primary{background:var(--primary); color:#fff; width:100%;}
+.btn-primary:active{background:var(--primary-dark);}
+.btn-outline{background:#fff; color:var(--primary); border:1.5px solid var(--primary);}
+.btn-gps{background:var(--sky-soft); color:#274752; width:100%;}
+.btn-gps.active{background:var(--sky); color:#fff;}
+.btn-photo{background:var(--soil-soft); color:#4A2F17; width:100%;}
+.btn-photo.has-photo{background:var(--soil); color:#fff;}
+.btn-block{width:100%;}
+.btn-row{display:flex; gap:10px; margin-top:14px;}
+.btn-row .btn{flex:1;}
+
+.gps-result, .photo-result{font-size:12px; margin-top:8px; color:var(--ink-soft);}
+.gps-result a{color:var(--sky); font-weight:700; text-decoration:none;}
+.photo-thumb{margin-top:8px; max-width:120px; border-radius:8px; display:block; border:1px solid var(--line);}
+
+/* Furrow timeline */
+.timeline{position:relative; padding-left:26px;}
+.timeline::before{
+  content:"";
+  position:absolute; left:9px; top:6px; bottom:6px; width:2px;
+  background-image:repeating-linear-gradient(to bottom, var(--soil) 0, var(--soil) 6px, transparent 6px, transparent 12px);
+}
+.entry{position:relative; margin-bottom:14px;}
+.entry::before{
+  content:"";
+  position:absolute; left:-26px; top:14px;
+  width:12px; height:12px; border-radius:50%;
+  background:var(--accent); border:2px solid #fff; box-shadow:0 0 0 2px var(--soil);
+}
+.entry-card{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:12px 14px;}
+.entry-top{display:flex; justify-content:space-between; align-items:baseline; gap:8px;}
+.entry-time{font-family:'Roboto Mono',monospace; font-weight:700; color:var(--primary-dark); font-size:14px;}
+.entry-dur{font-size:12px; color:var(--ink-soft);}
+.entry-task{font-weight:700; margin:4px 0 2px; font-size:15px;}
+.entry-field{font-size:13px; color:var(--ink-soft); margin-bottom:6px;}
+.entry-note{font-size:13px; color:var(--ink-soft); margin-bottom:6px; white-space:pre-wrap;}
+.entry-meta{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+.badge{font-size:11px; padding:3px 8px; border-radius:20px; font-weight:700; display:inline-flex; align-items:center; gap:4px;}
+.badge-gps{background:var(--sky-soft); color:#1B4451;}
+.badge-photo{background:var(--soil-soft); color:#4A2F17;}
+.entry-thumb{width:56px; height:56px; border-radius:8px; object-fit:cover; border:1px solid var(--line);}
+.entry-actions{display:flex; gap:8px; margin-top:8px;}
+.entry-actions button{background:none; border:none; font-size:12px; color:var(--ink-soft); cursor:pointer; padding:4px 6px; text-decoration:underline;}
+.entry-actions button.del{color:var(--danger);}
+
+.empty{text-align:center; padding:30px 10px; color:var(--ink-soft);}
+.empty .icon{font-size:34px; margin-bottom:8px;}
+
+/* Report */
+.date-picker-row{display:flex; align-items:center; gap:10px; margin-bottom:14px;}
+.date-picker-row input{flex:1;}
+.stat-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;}
+.stat-box{background:var(--primary); color:#fff; border-radius:12px; padding:14px;}
+.stat-box .label{font-size:11px; opacity:0.85;}
+.stat-box .value{font-family:'Zen Kaku Gothic New',sans-serif; font-weight:900; font-size:22px; margin-top:2px;}
+.stat-box.alt{background:var(--accent); color:#3B2606;}
+.breakdown-row{display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px dashed var(--line); font-size:14px;}
+.breakdown-row:last-child{border-bottom:none;}
+.report-actions{display:flex; gap:10px; margin:14px 0;}
+
+/* History */
+.history-item{display:flex; justify-content:space-between; align-items:center; padding:14px; border:1px solid var(--line); border-radius:12px; margin-bottom:10px; background:#fff; cursor:pointer;}
+.history-item:active{background:var(--bg);}
+.history-date{font-weight:700; font-size:15px;}
+.history-sub{font-size:12px; color:var(--ink-soft); margin-top:2px;}
+.history-arrow{color:var(--soil); font-size:18px;}
+
+/* Tab bar */
+.tabbar{
+  position:fixed; left:0; right:0; bottom:0;
+  background:#fff; border-top:1px solid var(--line);
+  display:flex; padding-bottom:var(--safe-bottom);
+  z-index:20;
+}
+.tabbar button{
+  flex:1; background:none; border:none; padding:10px 4px 8px; cursor:pointer;
+  color:var(--ink-soft); display:flex; flex-direction:column; align-items:center; gap:3px; font-size:11px; font-weight:700;
+}
+.tabbar button .ic{font-size:20px;}
+.tabbar button.active{color:var(--primary);}
+
+.toast{
+  position:fixed; bottom:calc(90px + var(--safe-bottom)); left:50%; transform:translateX(-50%);
+  background:var(--primary-dark); color:#fff; padding:10px 18px; border-radius:30px; font-size:13px;
+  opacity:0; pointer-events:none; transition:opacity 0.25s; z-index:30; white-space:nowrap;
+}
+.toast.show{opacity:1;}
+
+.print-area{display:none;}
+@media print{
+  body *{visibility:hidden;}
+  .print-area, .print-area *{visibility:visible;}
+  .print-area{position:absolute; left:0; top:0; width:100%; display:block; padding:20px;}
+  .print-title{font-size:20px; font-weight:900; margin-bottom:4px;}
+  .print-sub{font-size:12px; color:#555; margin-bottom:16px;}
+  .print-stats{display:flex; gap:20px; margin-bottom:16px; font-size:13px;}
+  .print-entry{border-bottom:1px solid #ccc; padding:8px 0; font-size:13px;}
+  .print-entry b{font-size:14px;}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-row">
+    <div>
+      <p class="farm-name" id="farmNameDisp">農場名未設定</p>
+      <p class="today-date" id="todayDateDisp">-</p>
+      <p class="today-sub" id="todayCountDisp">本日の記録 0件</p>
+    </div>
+    <button class="settings-btn" id="settingsToggle" aria-label="設定">⚙</button>
+  </div>
+  <div class="settings-panel" id="settingsPanel">
+    <label>農場名・氏名（日報に表示されます）</label>
+    <input type="text" id="farmNameInput" placeholder="例）〇〇農園 山田太郎">
+    <div class="row-btns">
+      <button class="save" id="saveSettingsBtn">保存</button>
+      <button class="reset" id="resetDataBtn">全データ削除</button>
+    </div>
+  </div>
+</div>
+
+<main>
+
+  <!-- 入力タブ -->
+  <section class="tab active" id="tab-input">
+    <div class="card">
+      <h2>📝 作業を記録</h2>
+      <div class="field">
+        <label>作業日</label>
+        <input type="date" id="inpDate">
+      </div>
+      <div class="field">
+        <label>圃場</label>
+        <select id="inpField">
+          <option value="">選択してください</option>
+        </select>
+        <button type="button" class="link-btn" id="manageFieldsBtn">＋ 圃場を管理する</button>
+        <div class="field-manager" id="fieldManager">
+          <div id="fieldManagerList"></div>
+          <div class="field-manager-add">
+            <input type="text" id="newFieldInput" placeholder="例）北畑・トマト">
+            <button type="button" class="btn btn-outline" id="addFieldBtn">追加</button>
+          </div>
+        </div>
+      </div>
+      <div class="field">
+        <label>作物・品種（任意）</label>
+        <input type="text" id="inpCrop" placeholder="例）ミニトマト（桃太郎）">
+      </div>
+      <div class="field">
+        <label>作業内容</label>
+        <select id="inpTaskType">
+          <option value="耕起・整地">耕起・整地</option>
+          <option value="播種・育苗">播種・育苗</option>
+          <option value="定植">定植</option>
+          <option value="施肥">施肥</option>
+          <option value="防除（農薬散布）">防除（農薬散布）</option>
+          <option value="除草">除草</option>
+          <option value="灌水">灌水</option>
+          <option value="収穫">収穫</option>
+          <option value="選別・調製">選別・調製</option>
+          <option value="出荷・配送">出荷・配送</option>
+          <option value="剪定・誘引">剪定・誘引</option>
+          <option value="資材管理・点検">資材管理・点検</option>
+          <option value="その他（自由入力）">その他（自由入力）</option>
+        </select>
+        <input type="text" id="inpTaskOther" placeholder="作業内容を入力" style="margin-top:8px; display:none;">
+      </div>
+      <div class="two-col">
+        <div class="field">
+          <label>開始時刻</label>
+          <input type="time" id="inpStart">
+        </div>
+        <div class="field">
+          <label>終了時刻</label>
+          <input type="time" id="inpEnd">
+        </div>
+      </div>
+      <p class="duration-hint" id="durationHint"></p>
+
+      <div class="field">
+        <label>位置情報（GPS）</label>
+        <button class="btn btn-gps" id="gpsBtn" type="button">📍 現在地を記録</button>
+        <div class="gps-result" id="gpsResult"></div>
+      </div>
+
+      <div class="field">
+        <label>写真</label>
+        <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none;">
+        <button class="btn btn-photo" id="photoBtn" type="button">📷 写真を撮る・選ぶ</button>
+        <div class="photo-result" id="photoResult"></div>
+        <img id="photoThumb" class="photo-thumb" style="display:none;">
+      </div>
+
+      <div class="field">
+        <label>メモ</label>
+        <textarea id="inpNote" placeholder="気づいたこと、収量、天候など"></textarea>
+      </div>
+
+      <button class="btn btn-primary" id="saveEntryBtn">この作業を保存</button>
+    </div>
+
+    <h2 style="font-size:15px; color:var(--primary-dark); margin:18px 4px 10px;">本日の記録</h2>
+    <div id="todayTimeline"></div>
+  </section>
+
+  <!-- 日報タブ -->
+  <section class="tab" id="tab-report">
+    <div class="card">
+      <div class="date-picker-row">
+        <input type="date" id="reportDate">
+      </div>
+      <div class="stat-grid">
+        <div class="stat-box">
+          <div class="label">合計作業時間</div>
+          <div class="value num" id="statTotalTime">0:00</div>
+        </div>
+        <div class="stat-box alt">
+          <div class="label">作業件数</div>
+          <div class="value num" id="statCount">0件</div>
+        </div>
+      </div>
+      <h2>作業内訳</h2>
+      <div id="breakdownList"></div>
+      <div class="report-actions">
+        <button class="btn btn-outline" id="printBtn" style="flex:1;">🖨 印刷用に表示</button>
+        <button class="btn btn-outline" id="copyBtn" style="flex:1;">📋 テキストをコピー</button>
+      </div>
+    </div>
+    <div id="reportEntries"></div>
+  </section>
+
+  <!-- 履歴タブ -->
+  <section class="tab" id="tab-history">
+    <div class="card">
+      <h2>📅 過去の日報</h2>
+      <div id="historyList"></div>
+    </div>
+  </section>
+
+</main>
+
+<div class="print-area" id="printArea"></div>
+
+<nav class="tabbar">
+  <button data-tab="input" class="active"><span class="ic">📝</span>入力</button>
+  <button data-tab="report"><span class="ic">📄</span>日報</button>
+  <button data-tab="history"><span class="ic">📅</span>履歴</button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+
+const TASK_ICONS = {
+  "耕起・整地":"🚜","播種・育苗":"🌱","定植":"🌿","施肥":"💧","防除（農薬散布）":"🧪",
+  "除草":"✂️","灌水":"🚿","収穫":"🧺","選別・調製":"📦","出荷・配送":"🚚",
+  "剪定・誘引":"🌳","資材管理・点検":"🔧","その他（自由入力）":"📌"
+};
+
+let currentGps = null;
+let currentPhoto = null;
+let currentTab = 'input';
+
+function pad(n){ return String(n).padStart(2,'0'); }
+function todayStr(){
+  const d = new Date();
+  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+}
+function dispDate(str){
+  const [y,m,d] = str.split('-').map(Number);
+  const dt = new Date(y, m-1, d);
+  const wd = ['日','月','火','水','木','金','土'][dt.getDay()];
+  return `${m}月${d}日（${wd}）`;
+}
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+function minutesToHM(mins){
+  const h = Math.floor(mins/60), m = mins%60;
+  return h + ':' + pad(m);
+}
+function calcDuration(start, end){
+  if(!start || !end) return null;
+  const [sh,sm] = start.split(':').map(Number);
+  const [eh,em] = end.split(':').map(Number);
+  let total = (eh*60+em) - (sh*60+sm);
+  if(total < 0) total += 24*60;
+  return total;
+}
+function genId(){
+  return 'e' + Date.now() + Math.random().toString(36).slice(2,7);
+}
+
+/* ---------- storage helpers (IndexedDB, works fully offline as an installed PWA) ---------- */
+const IDB_NAME = 'hatanote-db';
+const IDB_STORE = 'kv';
+let _dbPromise = null;
+function openDB(){
+  if(_dbPromise) return _dbPromise;
+  _dbPromise = new Promise((resolve, reject)=>{
+    const req = indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = ()=>{ req.result.createObjectStore(IDB_STORE); };
+    req.onsuccess = ()=> resolve(req.result);
+    req.onerror = ()=> reject(req.error);
+  });
+  return _dbPromise;
+}
+async function idbGet(key){
+  const db = await openDB();
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction(IDB_STORE, 'readonly');
+    const req = tx.objectStore(IDB_STORE).get(key);
+    req.onsuccess = ()=> resolve(req.result);
+    req.onerror = ()=> reject(req.error);
+  });
+}
+async function idbSet(key, value){
+  const db = await openDB();
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).put(value, key);
+    tx.oncomplete = ()=> resolve(true);
+    tx.onerror = ()=> reject(tx.error);
+  });
+}
+async function idbDelete(key){
+  const db = await openDB();
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).delete(key);
+    tx.oncomplete = ()=> resolve(true);
+    tx.onerror = ()=> reject(tx.error);
+  });
+}
+
+async function loadSettings(){
+  try{ const r = await idbGet('settings'); return r || {farmName:''}; }
+  catch(e){ return {farmName:''}; }
+}
+async function saveSettings(obj){
+  try{ await idbSet('settings', obj); }
+  catch(e){ console.error('settings save failed', e); }
+}
+async function loadDay(dateStr){
+  try{ const r = await idbGet('day:'+dateStr); return r || []; }
+  catch(e){ return []; }
+}
+async function saveDay(dateStr, entries){
+  try{
+    await idbSet('day:'+dateStr, entries);
+    await addToIndex(dateStr);
+    return true;
+  }catch(e){ console.error('day save failed', e); return false; }
+}
+async function loadIndex(){
+  try{ const r = await idbGet('day-index'); return r || []; }
+  catch(e){ return []; }
+}
+async function addToIndex(dateStr){
+  const idx = await loadIndex();
+  if(!idx.includes(dateStr)){
+    idx.push(dateStr);
+    idx.sort().reverse();
+    try{ await idbSet('day-index', idx); }catch(e){}
+  }
+}
+async function loadFieldList(){
+  try{
+    let list = await idbGet('fields');
+    if(list) return list;
+    // migrate from the older free-text autocomplete list, if present
+    const legacy = await idbGet('known-fields');
+    list = legacy && legacy.length ? legacy.slice() : [];
+    try{ await idbSet('fields', list); }catch(e){}
+    return list;
+  }catch(e){ return []; }
+}
+async function saveFieldList(list){
+  try{ await idbSet('fields', list); }catch(e){ console.error('field list save failed', e); }
+}
+async function addField(name){
+  name = (name||'').trim();
+  if(!name) return null;
+  const list = await loadFieldList();
+  if(!list.includes(name)){
+    list.push(name);
+    await saveFieldList(list);
+  }
+  return name;
+}
+async function removeField(name){
+  let list = await loadFieldList();
+  list = list.filter(f=>f!==name);
+  await saveFieldList(list);
+}
+
+/* ---------- image compression ---------- */
+function compressImage(file){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = (e)=>{
+      const img = new Image();
+      img.onload = ()=>{
+        const maxW = 700;
+        const scale = Math.min(1, maxW/img.width);
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width*scale;
+        canvas.height = img.height*scale;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.55));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ---------- init ---------- */
+async function init(){
+  document.getElementById('inpDate').value = todayStr();
+  document.getElementById('reportDate').value = todayStr();
+  const now = new Date();
+  document.getElementById('inpStart').value = pad(now.getHours())+':'+pad(now.getMinutes());
+
+  const settings = await loadSettings();
+  document.getElementById('farmNameInput').value = settings.farmName || '';
+  document.getElementById('farmNameDisp').textContent = settings.farmName || '農場名未設定（⚙で設定）';
+
+  updateHeaderDate();
+  await refreshFieldUI();
+  await renderTodayTab();
+  await renderReportTab();
+  await renderHistoryTab();
+
+  bindEvents();
+}
+
+function updateHeaderDate(){
+  document.getElementById('todayDateDisp').textContent = dispDate(todayStr());
+}
+
+async function refreshFieldUI(){
+  const list = await loadFieldList();
+  const sel = document.getElementById('inpField');
+  const prev = sel.value;
+  sel.innerHTML = `<option value="">選択してください</option>` +
+    list.map(f=>`<option value="${escapeHtml(f)}">${escapeHtml(f)}</option>`).join('');
+  if(list.includes(prev)) sel.value = prev;
+
+  const mgrList = document.getElementById('fieldManagerList');
+  if(list.length===0){
+    mgrList.innerHTML = `<div class="field-manager-empty">登録された圃場がありません。下から追加してください。</div>`;
+  } else {
+    mgrList.innerHTML = list.map(f=>`
+      <div class="field-manager-row">
+        <span>${escapeHtml(f)}</span>
+        <button type="button" data-remove-field="${escapeHtml(f)}">削除</button>
+      </div>`).join('');
+    mgrList.querySelectorAll('[data-remove-field]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const name = btn.dataset.removeField;
+        if(!confirm(`「${name}」を圃場一覧から削除しますか？\n（過去の記録は残ります）`)) return;
+        await removeField(name);
+        await refreshFieldUI();
+        showToast('削除しました');
+      });
+    });
+  }
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ---------- tab switching ---------- */
+function switchTab(name){
+  currentTab = name;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  document.querySelectorAll('.tabbar button').forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
+  if(name==='report') renderReportTab();
+  if(name==='history') renderHistoryTab();
+}
+
+/* ---------- render: today entry list ---------- */
+async function renderTodayTab(){
+  const date = document.getElementById('inpDate').value || todayStr();
+  const entries = await loadDay(date);
+  entries.sort((a,b)=> (a.start||'').localeCompare(b.start||''));
+  const wrap = document.getElementById('todayTimeline');
+  document.getElementById('todayCountDisp').textContent = `本日の記録 ${entries.length}件`;
+
+  if(entries.length===0){
+    wrap.innerHTML = `<div class="empty"><div class="icon">🌾</div>まだ記録がありません。<br>上のフォームから作業を記録しましょう。</div>`;
+    return;
+  }
+  wrap.innerHTML = `<div class="timeline">${entries.map(entryHtml).join('')}</div>`;
+  wrap.querySelectorAll('[data-del]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      if(!confirm('この記録を削除しますか？')) return;
+      const id = btn.dataset.del;
+      const list = (await loadDay(date)).filter(e=>e.id!==id);
+      await saveDay(date, list);
+      showToast('削除しました');
+      renderTodayTab();
+    });
+  });
+}
+
+function entryHtml(e){
+  const icon = TASK_ICONS[e.taskType] || '📌';
+  const dur = e.durationMin!=null ? `<span class="entry-dur">（${minutesToHM(e.durationMin)}）</span>` : '';
+  const gpsBadge = e.gps ? `<a class="badge badge-gps" href="${e.gps.mapUrl}" target="_blank" rel="noopener">📍 位置記録あり</a>` : '';
+  const photoBadge = e.photo ? `<span class="badge badge-photo">📷 写真</span>` : '';
+  const photo = e.photo ? `<img class="entry-thumb" src="${e.photo}">` : '';
+  return `
+  <div class="entry">
+    <div class="entry-card">
+      <div class="entry-top">
+        <span class="entry-time num">${e.start||'--:--'} 〜 ${e.end||'--:--'}</span>
+        ${dur}
+      </div>
+      <div class="entry-task">${icon} ${escapeHtml(e.taskType)}</div>
+      ${e.field ? `<div class="entry-field">🏞 ${escapeHtml(e.field)}${e.crop ? ' ／ ' + escapeHtml(e.crop) : ''}</div>` : ''}
+      ${e.note ? `<div class="entry-note">${escapeHtml(e.note)}</div>` : ''}
+      <div class="entry-meta">${gpsBadge}${photoBadge}${photo}</div>
+      <div class="entry-actions">
+        <button class="del" data-del="${e.id}">削除</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ---------- save entry ---------- */
+async function saveEntry(){
+  const date = document.getElementById('inpDate').value || todayStr();
+  let taskType = document.getElementById('inpTaskType').value;
+  if(taskType === 'その他（自由入力）'){
+    const other = document.getElementById('inpTaskOther').value.trim();
+    if(other) taskType = other;
+  }
+  const field = document.getElementById('inpField').value.trim();
+  const crop = document.getElementById('inpCrop').value.trim();
+  const start = document.getElementById('inpStart').value;
+  const end = document.getElementById('inpEnd').value;
+  const note = document.getElementById('inpNote').value.trim();
+
+  const entry = {
+    id: genId(),
+    date, taskType, field, crop, start, end,
+    durationMin: calcDuration(start, end),
+    note,
+    gps: currentGps,
+    photo: currentPhoto,
+    createdAt: Date.now()
+  };
+
+  const btn = document.getElementById('saveEntryBtn');
+  btn.disabled = true;
+  btn.textContent = '保存中...';
+  try{
+    const list = await loadDay(date);
+    list.push(entry);
+    const ok = await saveDay(date, list);
+    if(ok){
+      showToast('作業を記録しました');
+      resetForm();
+      await renderTodayTab();
+    } else {
+      showToast('保存に失敗しました。もう一度お試しください');
+    }
+  }catch(e){
+    console.error(e);
+    showToast('保存に失敗しました');
+  }finally{
+    btn.disabled = false;
+    btn.textContent = 'この作業を保存';
+  }
+}
+
+function resetForm(){
+  document.getElementById('inpField').value = '';
+  document.getElementById('inpCrop').value = '';
+  document.getElementById('inpNote').value = '';
+  const now = new Date();
+  document.getElementById('inpStart').value = pad(now.getHours())+':'+pad(now.getMinutes());
+  document.getElementById('inpEnd').value = '';
+  document.getElementById('inpTaskOther').value = '';
+  document.getElementById('inpTaskOther').style.display = 'none';
+  currentGps = null;
+  currentPhoto = null;
+  document.getElementById('gpsResult').innerHTML = '';
+  document.getElementById('gpsBtn').classList.remove('active');
+  document.getElementById('gpsBtn').textContent = '📍 現在地を記録';
+  document.getElementById('photoResult').innerHTML = '';
+  document.getElementById('photoBtn').classList.remove('has-photo');
+  document.getElementById('photoBtn').textContent = '📷 写真を撮る・選ぶ';
+  document.getElementById('photoThumb').style.display = 'none';
+  document.getElementById('durationHint').textContent = '';
+}
+
+/* ---------- GPS ---------- */
+function captureGps(){
+  if(!navigator.geolocation){
+    document.getElementById('gpsResult').textContent = 'この端末では位置情報を利用できません。';
+    return;
+  }
+  const btn = document.getElementById('gpsBtn');
+  btn.textContent = '📍 取得中...';
+  navigator.geolocation.getCurrentPosition(
+    (pos)=>{
+      const lat = pos.coords.latitude.toFixed(5);
+      const lon = pos.coords.longitude.toFixed(5);
+      const acc = Math.round(pos.coords.accuracy);
+      currentGps = {
+        lat, lon, accuracy: acc,
+        mapUrl: `https://www.google.com/maps?q=${lat},${lon}`
+      };
+      btn.textContent = '📍 記録済み（再取得）';
+      btn.classList.add('active');
+      document.getElementById('gpsResult').innerHTML =
+        `緯度 ${lat} / 経度 ${lon}（誤差約${acc}m） — <a href="${currentGps.mapUrl}" target="_blank" rel="noopener">地図で確認</a>`;
+    },
+    (err)=>{
+      btn.textContent = '📍 現在地を記録';
+      let msg = '位置情報を取得できませんでした。';
+      if(err.code === 1) msg = '位置情報の利用が許可されていません。端末の設定をご確認ください。';
+      document.getElementById('gpsResult').textContent = msg;
+    },
+    { enableHighAccuracy:true, timeout:10000 }
+  );
+}
+
+/* ---------- Photo ---------- */
+async function handlePhoto(file){
+  if(!file) return;
+  document.getElementById('photoResult').textContent = '処理中...';
+  try{
+    const dataUrl = await compressImage(file);
+    currentPhoto = dataUrl;
+    const btn = document.getElementById('photoBtn');
+    btn.textContent = '📷 写真を変更する';
+    btn.classList.add('has-photo');
+    document.getElementById('photoResult').textContent = '写真を追加しました';
+    const thumb = document.getElementById('photoThumb');
+    thumb.src = dataUrl;
+    thumb.style.display = 'block';
+  }catch(e){
+    document.getElementById('photoResult').textContent = '写真の処理に失敗しました';
+  }
+}
+
+/* ---------- Report ---------- */
+async function renderReportTab(){
+  const date = document.getElementById('reportDate').value || todayStr();
+  const entries = await loadDay(date);
+  entries.sort((a,b)=> (a.start||'').localeCompare(b.start||''));
+
+  const totalMin = entries.reduce((s,e)=> s + (e.durationMin||0), 0);
+  document.getElementById('statTotalTime').textContent = minutesToHM(totalMin);
+  document.getElementById('statCount').textContent = entries.length + '件';
+
+  const byTask = {};
+  entries.forEach(e=>{
+    if(!byTask[e.taskType]) byTask[e.taskType] = {count:0, min:0};
+    byTask[e.taskType].count++;
+    byTask[e.taskType].min += (e.durationMin||0);
+  });
+  const bl = document.getElementById('breakdownList');
+  const taskKeys = Object.keys(byTask);
+  if(taskKeys.length===0){
+    bl.innerHTML = `<p style="color:var(--ink-soft); font-size:13px;">この日の記録はありません。</p>`;
+  } else {
+    bl.innerHTML = taskKeys.map(k=>{
+      const icon = TASK_ICONS[k] || '📌';
+      return `<div class="breakdown-row"><span>${icon} ${escapeHtml(k)}（${byTask[k].count}件）</span><span class="num">${minutesToHM(byTask[k].min)}</span></div>`;
+    }).join('');
+  }
+
+  const re = document.getElementById('reportEntries');
+  if(entries.length===0){
+    re.innerHTML = '';
+  } else {
+    re.innerHTML = `<div class="timeline">${entries.map(entryHtml).join('')}</div>`;
+  }
+
+  window._reportCache = { date, entries, totalMin, byTask };
+}
+
+function buildReportText(){
+  const c = window._reportCache;
+  if(!c) return '';
+  const settings = { farmName: document.getElementById('farmNameInput').value || document.getElementById('farmNameDisp').textContent };
+  let txt = `作業日報\n${dispDate(c.date)}\n${settings.farmName}\n\n`;
+  txt += `合計作業時間: ${minutesToHM(c.totalMin)}　作業件数: ${c.entries.length}件\n\n`;
+  txt += `【内訳】\n`;
+  Object.keys(c.byTask).forEach(k=>{
+    txt += `・${k}: ${c.byTask[k].count}件 / ${minutesToHM(c.byTask[k].min)}\n`;
+  });
+  txt += `\n【詳細】\n`;
+  c.entries.forEach(e=>{
+    txt += `${e.start||'--:--'}〜${e.end||'--:--'} ${e.taskType}`;
+    if(e.field) txt += `（${e.field}${e.crop ? '・'+e.crop : ''}）`;
+    if(e.durationMin!=null) txt += ` [${minutesToHM(e.durationMin)}]`;
+    txt += `\n`;
+    if(e.note) txt += `  メモ: ${e.note}\n`;
+    if(e.gps) txt += `  位置: ${e.gps.lat}, ${e.gps.lon}\n`;
+  });
+  return txt;
+}
+
+function preparePrint(){
+  const c = window._reportCache;
+  if(!c) return;
+  const farmName = document.getElementById('farmNameInput').value || '';
+  let html = `<div class="print-title">作業日報</div>`;
+  html += `<div class="print-sub">${dispDate(c.date)}　${escapeHtml(farmName)}</div>`;
+  html += `<div class="print-stats"><span>合計作業時間: ${minutesToHM(c.totalMin)}</span><span>作業件数: ${c.entries.length}件</span></div>`;
+  c.entries.forEach(e=>{
+    html += `<div class="print-entry"><b>${e.start||'--:--'}〜${e.end||'--:--'} ${escapeHtml(e.taskType)}</b>`;
+    if(e.field) html += ` — ${escapeHtml(e.field)}${e.crop ? '・'+escapeHtml(e.crop) : ''}`;
+    if(e.durationMin!=null) html += ` (${minutesToHM(e.durationMin)})`;
+    if(e.note) html += `<br>メモ: ${escapeHtml(e.note)}`;
+    if(e.gps) html += `<br>位置: ${e.gps.lat}, ${e.gps.lon}`;
+    html += `</div>`;
+  });
+  document.getElementById('printArea').innerHTML = html;
+  window.print();
+}
+
+/* ---------- History ---------- */
+async function renderHistoryTab(){
+  const idx = await loadIndex();
+  const el = document.getElementById('historyList');
+  if(idx.length===0){
+    el.innerHTML = `<div class="empty"><div class="icon">📭</div>まだ記録がありません。</div>`;
+    return;
+  }
+  const rows = await Promise.all(idx.map(async d=>{
+    const entries = await loadDay(d);
+    const totalMin = entries.reduce((s,e)=>s+(e.durationMin||0),0);
+    return {date:d, count:entries.length, totalMin};
+  }));
+  el.innerHTML = rows.map(r=>`
+    <div class="history-item" data-date="${r.date}">
+      <div>
+        <div class="history-date">${dispDate(r.date)}</div>
+        <div class="history-sub">${r.count}件の記録 ／ 合計 ${minutesToHM(r.totalMin)}</div>
+      </div>
+      <div class="history-arrow">›</div>
+    </div>`).join('');
+  el.querySelectorAll('.history-item').forEach(item=>{
+    item.addEventListener('click', ()=>{
+      document.getElementById('reportDate').value = item.dataset.date;
+      switchTab('report');
+    });
+  });
+}
+
+/* ---------- events ---------- */
+function bindEvents(){
+  document.querySelectorAll('.tabbar button').forEach(b=>{
+    b.addEventListener('click', ()=> switchTab(b.dataset.tab));
+  });
+
+  document.getElementById('settingsToggle').addEventListener('click', ()=>{
+    document.getElementById('settingsPanel').classList.toggle('open');
+  });
+  document.getElementById('saveSettingsBtn').addEventListener('click', async ()=>{
+    const name = document.getElementById('farmNameInput').value.trim();
+    await saveSettings({farmName:name});
+    document.getElementById('farmNameDisp').textContent = name || '農場名未設定（⚙で設定）';
+    document.getElementById('settingsPanel').classList.remove('open');
+    showToast('設定を保存しました');
+  });
+  document.getElementById('resetDataBtn').addEventListener('click', async ()=>{
+    if(!confirm('すべての記録を削除します。この操作は取り消せません。よろしいですか？')) return;
+    const idx = await loadIndex();
+    for(const d of idx){
+      try{ await idbDelete('day:'+d); }catch(e){}
+    }
+    try{ await idbDelete('day-index'); }catch(e){}
+    try{ await idbDelete('known-fields'); }catch(e){}
+    try{ await idbDelete('fields'); }catch(e){}
+    showToast('全データを削除しました');
+    renderTodayTab(); renderReportTab(); renderHistoryTab(); refreshFieldUI();
+  });
+
+  document.getElementById('inpDate').addEventListener('change', renderTodayTab);
+  document.getElementById('inpStart').addEventListener('change', updateDurationHint);
+  document.getElementById('inpEnd').addEventListener('change', updateDurationHint);
+
+  document.getElementById('inpTaskType').addEventListener('change', (e)=>{
+    document.getElementById('inpTaskOther').style.display = e.target.value==='その他（自由入力）' ? 'block' : 'none';
+  });
+
+  document.getElementById('gpsBtn').addEventListener('click', captureGps);
+
+  document.getElementById('manageFieldsBtn').addEventListener('click', ()=>{
+    document.getElementById('fieldManager').classList.toggle('open');
+  });
+  document.getElementById('addFieldBtn').addEventListener('click', async ()=>{
+    const input = document.getElementById('newFieldInput');
+    const name = input.value.trim();
+    if(!name){ input.focus(); return; }
+    await addField(name);
+    input.value = '';
+    await refreshFieldUI();
+    document.getElementById('inpField').value = name;
+    showToast('圃場を追加しました');
+  });
+  document.getElementById('newFieldInput').addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){ e.preventDefault(); document.getElementById('addFieldBtn').click(); }
+  });
+
+  document.getElementById('photoBtn').addEventListener('click', ()=>{
+    document.getElementById('photoInput').click();
+  });
+  document.getElementById('photoInput').addEventListener('change', (e)=>{
+    handlePhoto(e.target.files[0]);
+  });
+
+  document.getElementById('saveEntryBtn').addEventListener('click', saveEntry);
+
+  document.getElementById('reportDate').addEventListener('change', renderReportTab);
+  document.getElementById('printBtn').addEventListener('click', preparePrint);
+  document.getElementById('copyBtn').addEventListener('click', async ()=>{
+    const txt = buildReportText();
+    try{
+      await navigator.clipboard.writeText(txt);
+      showToast('テキストをコピーしました');
+    }catch(e){
+      showToast('コピーできませんでした');
+    }
+  });
+}
+
+function updateDurationHint(){
+  const start = document.getElementById('inpStart').value;
+  const end = document.getElementById('inpEnd').value;
+  const dur = calcDuration(start, end);
+  document.getElementById('durationHint').textContent = dur!=null ? `作業時間: ${minutesToHM(dur)}` : '';
+}
+
+init();
+})();
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('service-worker.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
