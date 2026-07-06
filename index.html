@@ -469,7 +469,7 @@ import {
   query, where, orderBy, limit, getDocs, arrayUnion, arrayRemove
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
 import {
-  getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult,
+  getAuth, GoogleAuthProvider, signInWithPopup,
   onAuthStateChanged, signOut
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
 
@@ -1258,11 +1258,24 @@ function bindTabEvents(){
     localStorage.removeItem('hatanote-device-config');
     location.reload();
   });
-  document.getElementById('googleLoginBtn').addEventListener('click', ()=>{
-    signInWithRedirect(auth, googleProvider).catch((e)=>{
+  document.getElementById('googleLoginBtn').addEventListener('click', async ()=>{
+    const status = document.getElementById('setupStatus');
+    status.textContent = 'ログイン中...';
+    try{
+      await signInWithPopup(auth, googleProvider);
+      status.textContent = '';
+    }catch(e){
       console.error(e);
-      document.getElementById('setupStatus').textContent = 'ログインに失敗しました。もう一度お試しください。';
-    });
+      if(e.code === 'auth/popup-blocked'){
+        status.textContent = 'ポップアップがブロックされました。ブラウザの設定でこのサイトのポップアップを許可してください。';
+      } else if(e.code === 'auth/popup-closed-by-user'){
+        status.textContent = '';
+      } else if(e.code === 'auth/unauthorized-domain'){
+        status.textContent = 'このサイトのドメインがFirebaseで承認されていません（承認済みドメインの設定をご確認ください）。';
+      } else {
+        status.textContent = 'ログインに失敗しました。もう一度お試しください。';
+      }
+    }
   });
   document.getElementById('setupFarmCode').addEventListener('input', updateAuthUI);
 
@@ -1326,9 +1339,6 @@ function bindTabEvents(){
 (async function main(){
   bindTabEvents();
   initFirebase();
-
-  try{ await getRedirectResult(auth); }
-  catch(e){ console.error('Google sign-in redirect error', e); }
 
   onAuthStateChanged(auth, async (user)=>{
     currentUser = user;
