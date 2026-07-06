@@ -48,6 +48,31 @@ h1,h2,h3,.disp{font-family:'Zen Kaku Gothic New', sans-serif;}
 button, select, input, textarea{font-family:inherit; font-size:16px;}
 .num{font-family:'Roboto Mono', monospace;}
 
+/* ---------- Setup screen ---------- */
+#setupScreen{
+  position:fixed; inset:0; background:var(--primary); z-index:100;
+  display:flex; align-items:center; justify-content:center; padding:24px;
+  overflow-y:auto;
+}
+#setupScreen.hidden{display:none;}
+.setup-card{
+  background:#fff; border-radius:18px; padding:26px 22px; max-width:420px; width:100%;
+}
+.setup-card .sp-icon{font-size:40px; text-align:center; margin-bottom:6px;}
+.setup-card h1{font-size:19px; text-align:center; margin:0 0 6px; color:var(--primary-dark);}
+.setup-card p.sp-desc{font-size:13px; color:var(--ink-soft); text-align:center; margin:0 0 20px; line-height:1.6;}
+.setup-card .field{margin-bottom:14px;}
+.setup-card .field label{display:block; font-size:12px; color:var(--ink-soft); margin-bottom:5px; font-weight:700;}
+.setup-card .field input{width:100%; padding:12px; border:1.5px solid var(--line); border-radius:10px; background:#FCFBF7;}
+.setup-card .field .hint{font-size:11px; color:var(--ink-soft); margin-top:5px; line-height:1.5;}
+.setup-status{font-size:12px; color:var(--ink-soft); text-align:center; margin-top:12px; min-height:16px;}
+.google-status{
+  display:flex; align-items:center; gap:8px; font-size:13px; color:var(--ink-soft);
+  background:#F5F3EA; border-radius:8px; padding:10px 12px; margin-bottom:8px;
+}
+.google-status.signed-in{color:var(--primary-dark); font-weight:700;}
+.google-status .gs-avatar{width:22px; height:22px; border-radius:50%;}
+
 /* Header */
 .topbar{
   background:var(--primary);
@@ -67,6 +92,9 @@ button, select, input, textarea{font-family:inherit; font-size:16px;}
 .farm-name{font-size:13px; opacity:0.85; margin:0 0 2px;}
 .today-date{font-family:'Zen Kaku Gothic New',sans-serif; font-weight:900; font-size:26px; margin:0; letter-spacing:0.02em;}
 .today-sub{font-size:12px; opacity:0.8; margin:4px 0 0;}
+.sync-badge{display:inline-flex; align-items:center; gap:4px; font-size:11px; opacity:0.85; margin-top:4px;}
+.sync-dot{width:7px; height:7px; border-radius:50%; background:#8FBF6A;}
+.sync-dot.offline{background:#D98E2B;}
 .settings-btn{
   background:rgba(255,255,255,0.14); border:none; color:#fff;
   width:38px; height:38px; border-radius:10px; font-size:18px;
@@ -77,9 +105,10 @@ button, select, input, textarea{font-family:inherit; font-size:16px;}
   display:none; position:relative; z-index:1;
 }
 .settings-panel.open{display:block;}
-.settings-panel label{display:block; font-size:11px; opacity:0.85; margin-bottom:4px;}
-.settings-panel input{width:100%; padding:8px 10px; border-radius:8px; border:none; margin-bottom:8px;}
-.settings-panel .row-btns{display:flex; gap:8px;}
+.settings-panel label{display:block; font-size:11px; opacity:0.85; margin-bottom:4px; margin-top:8px;}
+.settings-panel label:first-child{margin-top:0;}
+.settings-panel input{width:100%; padding:8px 10px; border-radius:8px; border:none; margin-bottom:2px;}
+.settings-panel .row-btns{display:flex; gap:8px; margin-top:12px;}
 .settings-panel button.save{background:var(--accent); color:var(--primary-dark); border:none; font-weight:700; padding:9px 14px; border-radius:8px; flex:1; cursor:pointer;}
 .settings-panel button.reset{background:transparent; color:#fff; border:1px solid rgba(255,255,255,0.4); padding:9px 14px; border-radius:8px; cursor:pointer;}
 
@@ -134,9 +163,20 @@ main{padding:16px; max-width:640px; margin:0 auto;}
 }
 .btn-primary{background:var(--primary); color:#fff; width:100%;}
 .btn-primary:active{background:var(--primary-dark);}
+.btn-primary:disabled{opacity:0.6;}
 .btn-outline{background:#fff; color:var(--primary); border:1.5px solid var(--primary);}
 .btn-gps{background:var(--sky-soft); color:#274752; width:100%;}
 .btn-gps.active{background:var(--sky); color:#fff;}
+.btn-gps-toggle{background:var(--sky-soft); color:#274752; width:100%; font-size:16px;}
+.btn-gps-toggle.active{
+  background:var(--danger); color:#fff;
+  animation:pulse-rec 1.6s ease-in-out infinite;
+}
+@keyframes pulse-rec{
+  0%,100%{ box-shadow:0 0 0 0 rgba(180,70,46,0.35); }
+  50%{ box-shadow:0 0 0 8px rgba(180,70,46,0); }
+}
+.work-status{font-size:13px; margin-top:8px; color:var(--ink-soft); font-weight:700;}
 .btn-photo{background:var(--soil-soft); color:#4A2F17; width:100%;}
 .btn-photo.has-photo{background:var(--soil); color:#fff;}
 .btn-block{width:100%;}
@@ -166,12 +206,16 @@ main{padding:16px; max-width:640px; margin:0 auto;}
 .entry-time{font-family:'Roboto Mono',monospace; font-weight:700; color:var(--primary-dark); font-size:14px;}
 .entry-dur{font-size:12px; color:var(--ink-soft);}
 .entry-task{font-weight:700; margin:4px 0 2px; font-size:15px;}
-.entry-field{font-size:13px; color:var(--ink-soft); margin-bottom:6px;}
+.entry-field{font-size:13px; color:var(--ink-soft); margin-bottom:2px;}
+.entry-worker{font-size:12px; color:var(--soil); margin-bottom:6px; font-weight:700;}
 .entry-note{font-size:13px; color:var(--ink-soft); margin-bottom:6px; white-space:pre-wrap;}
 .entry-meta{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
 .badge{font-size:11px; padding:3px 8px; border-radius:20px; font-weight:700; display:inline-flex; align-items:center; gap:4px;}
 .badge-gps{background:var(--sky-soft); color:#1B4451;}
 .badge-photo{background:var(--soil-soft); color:#4A2F17;}
+.badge-pending{background:var(--accent-soft); color:#6B4708;}
+.badge-progress{background:var(--danger-soft); color:var(--danger);}
+.entry-actions button.edit{color:var(--sky);}
 .entry-thumb{width:56px; height:56px; border-radius:8px; object-fit:cover; border:1px solid var(--line);}
 .entry-actions{display:flex; gap:8px; margin-top:8px;}
 .entry-actions button{background:none; border:none; font-size:12px; color:var(--ink-soft); cursor:pointer; padding:4px 6px; text-decoration:underline;}
@@ -235,21 +279,49 @@ main{padding:16px; max-width:640px; margin:0 auto;}
 </head>
 <body>
 
+<div id="setupScreen">
+  <div class="setup-card">
+    <div class="sp-icon">🌱</div>
+    <h1>畑ノートへようこそ</h1>
+    <p class="sp-desc">家族・従業員のみなさんと記録を自動で共有するために、最初に設定してください。</p>
+    <div class="field">
+      <label>農場コード（全員で同じものを使います）</label>
+      <input type="text" id="setupFarmCode" placeholder="例）yamada-farm-2026">
+      <div class="hint">初めての場合は自由に決めてください。他の家族・従業員の端末にも同じコードを入力してもらうと、記録が自動的にひとつにまとまります。</div>
+    </div>
+    <div class="field">
+      <label>あなたのアカウント</label>
+      <div class="google-status" id="googleAccountStatus">未ログイン</div>
+      <button class="btn btn-outline btn-block" id="googleLoginBtn" type="button">Googleでログイン</button>
+    </div>
+    <button class="btn btn-primary" id="setupSaveBtn" disabled>保存して始める</button>
+    <div class="setup-status" id="setupStatus"></div>
+  </div>
+</div>
+
 <div class="topbar">
   <div class="topbar-row">
     <div>
       <p class="farm-name" id="farmNameDisp">農場名未設定</p>
       <p class="today-date" id="todayDateDisp">-</p>
       <p class="today-sub" id="todayCountDisp">本日の記録 0件</p>
+      <p class="sync-badge"><span class="sync-dot" id="syncDot"></span><span id="syncLabel">同期中...</span></p>
     </div>
     <button class="settings-btn" id="settingsToggle" aria-label="設定">⚙</button>
   </div>
   <div class="settings-panel" id="settingsPanel">
-    <label>農場名・氏名（日報に表示されます）</label>
-    <input type="text" id="farmNameInput" placeholder="例）〇〇農園 山田太郎">
+    <label>農場名（表示用・全員に共通）</label>
+    <input type="text" id="farmNameInput" placeholder="例）〇〇農園">
+    <label>あなたのアカウント</label>
+    <div class="google-status" id="settingsGoogleStatus">未ログイン</div>
+    <label>表示名（作業記録に表示されます）</label>
+    <input type="text" id="workerNameInput" placeholder="例）山田太郎">
+    <label>農場コード</label>
+    <input type="text" id="farmCodeInput" placeholder="農場コード">
+    <div class="hint" style="opacity:0.75; font-size:11px; margin-top:2px;">コードを変えると別の農場データに切り替わります（新しい端末を仲間に追加する時は、同じコードを入力してもらってください）。</div>
     <div class="row-btns">
       <button class="save" id="saveSettingsBtn">保存</button>
-      <button class="reset" id="resetDataBtn">全データ削除</button>
+      <button class="reset" id="logoutBtn">ログアウト</button>
     </div>
   </div>
 </div>
@@ -301,22 +373,26 @@ main{padding:16px; max-width:640px; margin:0 auto;}
         </select>
         <input type="text" id="inpTaskOther" placeholder="作業内容を入力" style="margin-top:8px; display:none;">
       </div>
-      <div class="two-col">
-        <div class="field">
-          <label>開始時刻</label>
-          <input type="time" id="inpStart">
-        </div>
-        <div class="field">
-          <label>終了時刻</label>
-          <input type="time" id="inpEnd">
-        </div>
-      </div>
-      <p class="duration-hint" id="durationHint"></p>
 
-      <div class="field">
-        <label>位置情報（GPS）</label>
-        <button class="btn btn-gps" id="gpsBtn" type="button">📍 現在地を記録</button>
-        <div class="gps-result" id="gpsResult"></div>
+      <div class="field" id="liveTimeSection">
+        <label>作業時間（GPSで自動記録）</label>
+        <button class="btn btn-gps-toggle" id="gpsToggleBtn" type="button">📍 GPSで作業開始</button>
+        <div class="work-status" id="workStatusDisplay"></div>
+      </div>
+
+      <div class="field" id="manualTimeSection" style="display:none;">
+        <label>作業時間（過去日の手動記録）</label>
+        <div class="two-col">
+          <div class="field">
+            <label>開始時刻</label>
+            <input type="time" id="inpStart">
+          </div>
+          <div class="field">
+            <label>終了時刻</label>
+            <input type="time" id="inpEnd">
+          </div>
+        </div>
+        <p class="duration-hint" id="durationHint"></p>
       </div>
 
       <div class="field">
@@ -332,10 +408,10 @@ main{padding:16px; max-width:640px; margin:0 auto;}
         <textarea id="inpNote" placeholder="気づいたこと、収量、天候など"></textarea>
       </div>
 
-      <button class="btn btn-primary" id="saveEntryBtn">この作業を保存</button>
+      <button class="btn btn-primary" id="saveEntryBtn" style="display:none;">この作業を保存</button>
     </div>
 
-    <h2 style="font-size:15px; color:var(--primary-dark); margin:18px 4px 10px;">本日の記録</h2>
+    <h2 style="font-size:15px; color:var(--primary-dark); margin:18px 4px 10px;">本日の記録（全員分）</h2>
     <div id="todayTimeline"></div>
   </section>
 
@@ -385,8 +461,32 @@ main{padding:16px; max-width:640px; margin:0 auto;}
 
 <div class="toast" id="toast"></div>
 
-<script>
-(function(){
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
+import {
+  initializeFirestore, persistentLocalCache, persistentSingleTabManager,
+  collection, doc, addDoc, updateDoc, getDoc, deleteDoc, setDoc, onSnapshot,
+  query, where, orderBy, limit, getDocs, arrayUnion, arrayRemove
+} from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
+import {
+  getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult,
+  onAuthStateChanged, signOut
+} from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
+
+/* =========================================================================
+   Firebase設定
+   下記のプレースホルダーを、あなた自身のFirebaseプロジェクトの値に
+   置き換えてください（Firebaseコンソール > プロジェクトの設定 >全般 >
+   マイアプリ の「SDK の設定と構成」に表示される値です）。
+   ========================================================================= */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyB2J9-Nl-BdZBEVrcvXjMUM1uhcKjOPEg0",
+  authDomain: "hatanote.firebaseapp.com",
+  projectId: "hatanote",
+  storageBucket: "hatanote.firebasestorage.app",
+  messagingSenderId: "129056862865",
+  appId: "1:129056862865:web:143360e3f1a3330af90530"
+};
 
 const TASK_ICONS = {
   "耕起・整地":"🚜","播種・育苗":"🌱","定植":"🌿","施肥":"💧","防除（農薬散布）":"🧪",
@@ -394,9 +494,21 @@ const TASK_ICONS = {
   "剪定・誘引":"🌳","資材管理・点検":"🔧","その他（自由入力）":"📌"
 };
 
-let currentGps = null;
+let app, db, auth;
+let googleProvider;
+let currentUser = null;
+let appStarted = false;
+let farmCode = '';
+let workerName = '';
 let currentPhoto = null;
 let currentTab = 'input';
+let unsubToday = null;
+let unsubReport = null;
+let unsubFields = null;
+let unsubSettings = null;
+let activeEntryId = null;
+let activeEntryStartAt = null;
+let timerInterval = null;
 
 function pad(n){ return String(n).padStart(2,'0'); }
 function todayStr(){
@@ -427,112 +539,33 @@ function calcDuration(start, end){
   if(total < 0) total += 24*60;
   return total;
 }
-function genId(){
-  return 'e' + Date.now() + Math.random().toString(36).slice(2,7);
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-/* ---------- storage helpers (IndexedDB, works fully offline as an installed PWA) ---------- */
-const IDB_NAME = 'hatanote-db';
-const IDB_STORE = 'kv';
-let _dbPromise = null;
-function openDB(){
-  if(_dbPromise) return _dbPromise;
-  _dbPromise = new Promise((resolve, reject)=>{
-    const req = indexedDB.open(IDB_NAME, 1);
-    req.onupgradeneeded = ()=>{ req.result.createObjectStore(IDB_STORE); };
-    req.onsuccess = ()=> resolve(req.result);
-    req.onerror = ()=> reject(req.error);
-  });
-  return _dbPromise;
+/* ---------- device-local config (farm code, optional display-name override) ---------- */
+function loadDeviceConfig(){
+  try{ return JSON.parse(localStorage.getItem('hatanote-device-config') || 'null'); }
+  catch(e){ return null; }
 }
-async function idbGet(key){
-  const db = await openDB();
-  return new Promise((resolve, reject)=>{
-    const tx = db.transaction(IDB_STORE, 'readonly');
-    const req = tx.objectStore(IDB_STORE).get(key);
-    req.onsuccess = ()=> resolve(req.result);
-    req.onerror = ()=> reject(req.error);
-  });
+function saveDeviceConfig(cfg){
+  localStorage.setItem('hatanote-device-config', JSON.stringify(cfg));
 }
-async function idbSet(key, value){
-  const db = await openDB();
-  return new Promise((resolve, reject)=>{
-    const tx = db.transaction(IDB_STORE, 'readwrite');
-    tx.objectStore(IDB_STORE).put(value, key);
-    tx.oncomplete = ()=> resolve(true);
-    tx.onerror = ()=> reject(tx.error);
-  });
+function loadActiveEntryLocal(){
+  try{ return JSON.parse(localStorage.getItem('hatanote-active-entry') || 'null'); }
+  catch(e){ return null; }
 }
-async function idbDelete(key){
-  const db = await openDB();
-  return new Promise((resolve, reject)=>{
-    const tx = db.transaction(IDB_STORE, 'readwrite');
-    tx.objectStore(IDB_STORE).delete(key);
-    tx.oncomplete = ()=> resolve(true);
-    tx.onerror = ()=> reject(tx.error);
-  });
+function saveActiveEntryLocal(obj){
+  localStorage.setItem('hatanote-active-entry', JSON.stringify(obj));
+}
+function clearActiveEntryLocal(){
+  localStorage.removeItem('hatanote-active-entry');
 }
 
-async function loadSettings(){
-  try{ const r = await idbGet('settings'); return r || {farmName:''}; }
-  catch(e){ return {farmName:''}; }
-}
-async function saveSettings(obj){
-  try{ await idbSet('settings', obj); }
-  catch(e){ console.error('settings save failed', e); }
-}
-async function loadDay(dateStr){
-  try{ const r = await idbGet('day:'+dateStr); return r || []; }
-  catch(e){ return []; }
-}
-async function saveDay(dateStr, entries){
-  try{
-    await idbSet('day:'+dateStr, entries);
-    await addToIndex(dateStr);
-    return true;
-  }catch(e){ console.error('day save failed', e); return false; }
-}
-async function loadIndex(){
-  try{ const r = await idbGet('day-index'); return r || []; }
-  catch(e){ return []; }
-}
-async function addToIndex(dateStr){
-  const idx = await loadIndex();
-  if(!idx.includes(dateStr)){
-    idx.push(dateStr);
-    idx.sort().reverse();
-    try{ await idbSet('day-index', idx); }catch(e){}
-  }
-}
-async function loadFieldList(){
-  try{
-    let list = await idbGet('fields');
-    if(list) return list;
-    // migrate from the older free-text autocomplete list, if present
-    const legacy = await idbGet('known-fields');
-    list = legacy && legacy.length ? legacy.slice() : [];
-    try{ await idbSet('fields', list); }catch(e){}
-    return list;
-  }catch(e){ return []; }
-}
-async function saveFieldList(list){
-  try{ await idbSet('fields', list); }catch(e){ console.error('field list save failed', e); }
-}
-async function addField(name){
-  name = (name||'').trim();
-  if(!name) return null;
-  const list = await loadFieldList();
-  if(!list.includes(name)){
-    list.push(name);
-    await saveFieldList(list);
-  }
-  return name;
-}
-async function removeField(name){
-  let list = await loadFieldList();
-  list = list.filter(f=>f!==name);
-  await saveFieldList(list);
-}
+/* ---------- Firestore refs ---------- */
+function entriesCol(){ return collection(db, 'farms', farmCode, 'entries'); }
+function metaFieldsRef(){ return doc(db, 'farms', farmCode, 'meta', 'fields'); }
+function metaSettingsRef(){ return doc(db, 'farms', farmCode, 'meta', 'settings'); }
 
 /* ---------- image compression ---------- */
 function compressImage(file){
@@ -541,14 +574,20 @@ function compressImage(file){
     reader.onload = (e)=>{
       const img = new Image();
       img.onload = ()=>{
-        const maxW = 700;
+        const maxW = 640;
         const scale = Math.min(1, maxW/img.width);
         const canvas = document.createElement('canvas');
         canvas.width = img.width*scale;
         canvas.height = img.height*scale;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', 0.55));
+        let quality = 0.55;
+        let out = canvas.toDataURL('image/jpeg', quality);
+        while(out.length > 650000 && quality > 0.2){
+          quality -= 0.1;
+          out = canvas.toDataURL('image/jpeg', quality);
+        }
+        resolve(out);
       };
       img.onerror = reject;
       img.src = e.target.result;
@@ -558,32 +597,121 @@ function compressImage(file){
   });
 }
 
-/* ---------- init ---------- */
-async function init(){
+/* ---------- Firebase init ---------- */
+function initFirebase(){
+  app = initializeApp(FIREBASE_CONFIG);
+  db = initializeFirestore(app, {
+    localCache: persistentLocalCache({ tabManager: persistentSingleTabManager() })
+  });
+  auth = getAuth(app);
+  googleProvider = new GoogleAuthProvider();
+}
+
+function setSyncStatus(){
+  const dot = document.getElementById('syncDot');
+  const label = document.getElementById('syncLabel');
+  if(navigator.onLine){
+    dot.classList.remove('offline');
+    label.textContent = 'オンライン・自動同期中';
+  } else {
+    dot.classList.add('offline');
+    label.textContent = 'オフライン（記録は端末に保存され、電波が戻ると自動送信されます）';
+  }
+}
+
+/* ---------- auth UI (setup screen + settings panel) ---------- */
+function updateAuthUI(){
+  const loggedIn = !!currentUser;
+  const nameOrEmail = currentUser ? (currentUser.displayName || currentUser.email || '不明なアカウント') : '';
+
+  const setupStatusEl = document.getElementById('googleAccountStatus');
+  if(setupStatusEl){
+    setupStatusEl.textContent = loggedIn ? `✅ ${nameOrEmail} でログイン中` : '未ログイン';
+    setupStatusEl.classList.toggle('signed-in', loggedIn);
+  }
+  const loginBtn = document.getElementById('googleLoginBtn');
+  if(loginBtn) loginBtn.style.display = loggedIn ? 'none' : 'flex';
+  const setupCodeEl = document.getElementById('setupFarmCode');
+  const saveBtn = document.getElementById('setupSaveBtn');
+  if(saveBtn) saveBtn.disabled = !(loggedIn && setupCodeEl && setupCodeEl.value.trim());
+
+  const settingsStatusEl = document.getElementById('settingsGoogleStatus');
+  if(settingsStatusEl){
+    settingsStatusEl.textContent = loggedIn ? `✅ ${nameOrEmail}` : '未ログイン';
+    settingsStatusEl.classList.toggle('signed-in', loggedIn);
+  }
+}
+
+/* ---------- setup screen ---------- */
+function showSetupScreen(prefillFarmCode){
+  const scr = document.getElementById('setupScreen');
+  scr.classList.remove('hidden');
+  if(prefillFarmCode) document.getElementById('setupFarmCode').value = prefillFarmCode;
+  updateAuthUI();
+}
+function hideSetupScreen(){
+  document.getElementById('setupScreen').classList.add('hidden');
+}
+
+async function handleSetupSave(){
+  const code = document.getElementById('setupFarmCode').value.trim();
+  const status = document.getElementById('setupStatus');
+  if(!currentUser){
+    status.textContent = 'Googleでログインしてください。';
+    return;
+  }
+  if(!code){
+    status.textContent = '農場コードを入力してください。';
+    return;
+  }
+  status.textContent = '接続しています...';
+  const existing = loadDeviceConfig() || {};
+  saveDeviceConfig({farmCode: code, workerNameOverride: existing.workerNameOverride || ''});
+  farmCode = code;
+  workerName = existing.workerNameOverride || currentUser.displayName || currentUser.email || '匿名';
+  document.getElementById('workerNameInput').value = workerName;
+  document.getElementById('farmCodeInput').value = code;
+  hideSetupScreen();
+  appStarted = true;
+  await startApp();
+}
+
+/* ---------- app bootstrap ---------- */
+async function startApp(){
   document.getElementById('inpDate').value = todayStr();
   document.getElementById('reportDate').value = todayStr();
   const now = new Date();
   document.getElementById('inpStart').value = pad(now.getHours())+':'+pad(now.getMinutes());
-
-  const settings = await loadSettings();
-  document.getElementById('farmNameInput').value = settings.farmName || '';
-  document.getElementById('farmNameDisp').textContent = settings.farmName || '農場名未設定（⚙で設定）';
-
   updateHeaderDate();
-  await refreshFieldUI();
-  await renderTodayTab();
-  await renderReportTab();
-  await renderHistoryTab();
+  updateFormModeForDate();
+  setSyncStatus();
 
-  bindEvents();
+  subscribeFields();
+  subscribeSettings();
+  subscribeToday();
+  await resumeActiveEntryIfAny();
+}
+
+function updateFormModeForDate(){
+  const isToday = document.getElementById('inpDate').value === todayStr();
+  document.getElementById('liveTimeSection').style.display = isToday ? 'block' : 'none';
+  document.getElementById('manualTimeSection').style.display = isToday ? 'none' : 'block';
+  document.getElementById('saveEntryBtn').style.display = isToday ? 'none' : 'flex';
 }
 
 function updateHeaderDate(){
   document.getElementById('todayDateDisp').textContent = dispDate(todayStr());
 }
 
-async function refreshFieldUI(){
-  const list = await loadFieldList();
+/* ---------- shared field list (Firestore) ---------- */
+function subscribeFields(){
+  if(unsubFields) unsubFields();
+  unsubFields = onSnapshot(metaFieldsRef(), (snap)=>{
+    const list = snap.exists() ? (snap.data().list || []) : [];
+    renderFieldUI(list);
+  }, (err)=>console.error('fields sync error', err));
+}
+function renderFieldUI(list){
   const sel = document.getElementById('inpField');
   const prev = sel.value;
   sel.innerHTML = `<option value="">選択してください</option>` +
@@ -603,115 +731,307 @@ async function refreshFieldUI(){
       btn.addEventListener('click', async ()=>{
         const name = btn.dataset.removeField;
         if(!confirm(`「${name}」を圃場一覧から削除しますか？\n（過去の記録は残ります）`)) return;
-        await removeField(name);
-        await refreshFieldUI();
+        try{ await setDoc(metaFieldsRef(), {list: arrayRemove(name)}, {merge:true}); }catch(e){ console.error(e); }
         showToast('削除しました');
       });
     });
   }
 }
-
-function escapeHtml(s){
-  return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function addField(name){
+  name = (name||'').trim();
+  if(!name) return;
+  try{ await setDoc(metaFieldsRef(), {list: arrayUnion(name)}, {merge:true}); }
+  catch(e){ console.error(e); showToast('追加に失敗しました（電波を確認してください）'); }
 }
 
-/* ---------- tab switching ---------- */
-function switchTab(name){
-  currentTab = name;
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  document.getElementById('tab-'+name).classList.add('active');
-  document.querySelectorAll('.tabbar button').forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
-  if(name==='report') renderReportTab();
-  if(name==='history') renderHistoryTab();
+/* ---------- shared settings (farm display name) ---------- */
+function subscribeSettings(){
+  if(unsubSettings) unsubSettings();
+  unsubSettings = onSnapshot(metaSettingsRef(), (snap)=>{
+    const farmName = snap.exists() ? (snap.data().farmName || '') : '';
+    document.getElementById('farmNameDisp').textContent = farmName || '農場名未設定（⚙で設定）';
+    if(document.activeElement !== document.getElementById('farmNameInput')){
+      document.getElementById('farmNameInput').value = farmName;
+    }
+  }, (err)=>console.error('settings sync error', err));
+}
+async function saveFarmName(name){
+  try{ await setDoc(metaSettingsRef(), {farmName:name}, {merge:true}); }
+  catch(e){ console.error(e); showToast('保存に失敗しました（電波を確認してください）'); }
 }
 
-/* ---------- render: today entry list ---------- */
-async function renderTodayTab(){
+/* ---------- today tab (live) ---------- */
+function subscribeToday(){
   const date = document.getElementById('inpDate').value || todayStr();
-  const entries = await loadDay(date);
-  entries.sort((a,b)=> (a.start||'').localeCompare(b.start||''));
-  const wrap = document.getElementById('todayTimeline');
-  document.getElementById('todayCountDisp').textContent = `本日の記録 ${entries.length}件`;
-
-  if(entries.length===0){
-    wrap.innerHTML = `<div class="empty"><div class="icon">🌾</div>まだ記録がありません。<br>上のフォームから作業を記録しましょう。</div>`;
-    return;
-  }
-  wrap.innerHTML = `<div class="timeline">${entries.map(entryHtml).join('')}</div>`;
-  wrap.querySelectorAll('[data-del]').forEach(btn=>{
-    btn.addEventListener('click', async ()=>{
-      if(!confirm('この記録を削除しますか？')) return;
-      const id = btn.dataset.del;
-      const list = (await loadDay(date)).filter(e=>e.id!==id);
-      await saveDay(date, list);
-      showToast('削除しました');
-      renderTodayTab();
+  if(unsubToday) unsubToday();
+  const q = query(entriesCol(), where('date','==',date));
+  unsubToday = onSnapshot(q, (snap)=>{
+    const entries = snap.docs.map(d=>({id:d.id, ...d.data(), _pending: d.metadata.hasPendingWrites}));
+    entries.sort((a,b)=> (a.start||'').localeCompare(b.start||''));
+    document.getElementById('todayCountDisp').textContent = `本日の記録 ${entries.length}件`;
+    const wrap = document.getElementById('todayTimeline');
+    if(entries.length===0){
+      wrap.innerHTML = `<div class="empty"><div class="icon">🌾</div>まだ記録がありません。<br>上のフォームから作業を記録しましょう。</div>`;
+      return;
+    }
+    wrap.innerHTML = `<div class="timeline">${entries.map(e=>entryHtml(e)).join('')}</div>`;
+    wrap.querySelectorAll('[data-del]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        if(!confirm('この記録を削除しますか？')) return;
+        try{ await deleteDoc(doc(entriesCol(), btn.dataset.del)); showToast('削除しました'); }
+        catch(e){ console.error(e); showToast('削除に失敗しました'); }
+      });
     });
-  });
+    wrap.querySelectorAll('[data-edit]').forEach(btn=>{
+      btn.addEventListener('click', ()=> editEntryTime(btn.dataset.edit, btn.dataset.start, btn.dataset.end));
+    });
+  }, (err)=>console.error('today sync error', err));
 }
 
-function entryHtml(e){
+function entryHtml(e, opts={}){
+  const showActions = opts.showActions !== false;
   const icon = TASK_ICONS[e.taskType] || '📌';
+  const inProgress = e.status === 'in_progress';
   const dur = e.durationMin!=null ? `<span class="entry-dur">（${minutesToHM(e.durationMin)}）</span>` : '';
-  const gpsBadge = e.gps ? `<a class="badge badge-gps" href="${e.gps.mapUrl}" target="_blank" rel="noopener">📍 位置記録あり</a>` : '';
+  const gpsObj = e.gpsEnd || e.gpsStart || e.gps || null;
+  const gpsBadge = gpsObj ? `<a class="badge badge-gps" href="${gpsObj.mapUrl}" target="_blank" rel="noopener">📍 位置記録あり</a>` : '';
   const photoBadge = e.photo ? `<span class="badge badge-photo">📷 写真</span>` : '';
+  const pendingBadge = e._pending ? `<span class="badge badge-pending">⏳ 送信待ち</span>` : '';
+  const progressBadge = inProgress ? `<span class="badge badge-progress">⏱ 作業中</span>` : '';
   const photo = e.photo ? `<img class="entry-thumb" src="${e.photo}">` : '';
+  const actions = showActions ? `
+      <div class="entry-actions">
+        <button class="edit" data-edit="${e.id}" data-start="${e.start||''}" data-end="${e.end||''}">時刻を修正</button>
+        <button class="del" data-del="${e.id}">削除</button>
+      </div>` : '';
   return `
   <div class="entry">
     <div class="entry-card">
       <div class="entry-top">
-        <span class="entry-time num">${e.start||'--:--'} 〜 ${e.end||'--:--'}</span>
+        <span class="entry-time num">${e.start||'--:--'} 〜 ${inProgress ? '…' : (e.end||'--:--')}</span>
         ${dur}
       </div>
       <div class="entry-task">${icon} ${escapeHtml(e.taskType)}</div>
       ${e.field ? `<div class="entry-field">🏞 ${escapeHtml(e.field)}${e.crop ? ' ／ ' + escapeHtml(e.crop) : ''}</div>` : ''}
+      ${e.workerName ? `<div class="entry-worker">👤 ${escapeHtml(e.workerName)}</div>` : ''}
       ${e.note ? `<div class="entry-note">${escapeHtml(e.note)}</div>` : ''}
-      <div class="entry-meta">${gpsBadge}${photoBadge}${photo}</div>
-      <div class="entry-actions">
-        <button class="del" data-del="${e.id}">削除</button>
-      </div>
+      <div class="entry-meta">${progressBadge}${gpsBadge}${photoBadge}${pendingBadge}${photo}</div>
+      ${actions}
     </div>
   </div>`;
 }
 
-/* ---------- save entry ---------- */
-async function saveEntry(){
-  const date = document.getElementById('inpDate').value || todayStr();
+async function editEntryTime(entryId, currentStart, currentEnd){
+  const newStart = prompt('開始時刻を修正してください（例 09:30）', currentStart || '');
+  if(newStart === null) return;
+  const newEnd = prompt('終了時刻を修正してください（例 10:15／作業中なら空欄のまま）', currentEnd || '');
+  if(newEnd === null) return;
+  const updates = { start: newStart.trim() };
+  if(newEnd.trim()){
+    updates.end = newEnd.trim();
+    updates.durationMin = calcDuration(updates.start, updates.end);
+    updates.status = 'done';
+  }
+  try{
+    await updateDoc(doc(entriesCol(), entryId), updates);
+    showToast('時刻を修正しました');
+  }catch(e){
+    console.error(e);
+    showToast('修正に失敗しました');
+  }
+}
+
+/* ---------- collect current form values ---------- */
+function currentTaskType(){
   let taskType = document.getElementById('inpTaskType').value;
   if(taskType === 'その他（自由入力）'){
     const other = document.getElementById('inpTaskOther').value.trim();
     if(other) taskType = other;
   }
-  const field = document.getElementById('inpField').value.trim();
-  const crop = document.getElementById('inpCrop').value.trim();
+  return taskType;
+}
+
+/* ---------- GPS start/stop workflow (live, today only) ---------- */
+function getCurrentGpsAsync(){
+  return new Promise((resolve)=>{
+    if(!navigator.geolocation){ resolve(null); return; }
+    navigator.geolocation.getCurrentPosition(
+      (pos)=>{
+        const lat = pos.coords.latitude.toFixed(5);
+        const lon = pos.coords.longitude.toFixed(5);
+        const acc = Math.round(pos.coords.accuracy);
+        resolve({ lat, lon, accuracy: acc, mapUrl: `https://www.google.com/maps?q=${lat},${lon}` });
+      },
+      ()=> resolve(null),
+      { enableHighAccuracy:true, timeout:10000 }
+    );
+  });
+}
+
+async function toggleGpsWork(){
+  if(activeEntryId) await stopWork();
+  else await startWork();
+}
+
+async function startWork(){
+  const btn = document.getElementById('gpsToggleBtn');
+  btn.disabled = true;
+  const now = new Date();
+  const startHM = pad(now.getHours())+':'+pad(now.getMinutes());
+  const entry = {
+    date: todayStr(),
+    taskType: currentTaskType(),
+    field: document.getElementById('inpField').value.trim(),
+    crop: document.getElementById('inpCrop').value.trim(),
+    note: document.getElementById('inpNote').value.trim(),
+    start: startHM, end: null, durationMin: null,
+    status: 'in_progress',
+    gpsStart: null, gpsEnd: null,
+    photo: currentPhoto,
+    workerName,
+    startAt: now.getTime(),
+    createdAt: now.getTime()
+  };
+  try{
+    const ref = await addDoc(entriesCol(), entry);
+    activeEntryId = ref.id;
+    activeEntryStartAt = now.getTime();
+    saveActiveEntryLocal({id: ref.id, startAt: activeEntryStartAt});
+    enterInProgressUI();
+    showToast('作業を開始しました');
+    getCurrentGpsAsync().then(gps=>{
+      if(gps) updateDoc(doc(entriesCol(), ref.id), {gpsStart: gps}).catch(()=>{});
+    });
+  }catch(e){
+    console.error(e);
+    showToast('開始の記録に失敗しました');
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+async function stopWork(){
+  if(!activeEntryId) return;
+  const btn = document.getElementById('gpsToggleBtn');
+  btn.disabled = true;
+  const now = new Date();
+  const endHM = pad(now.getHours())+':'+pad(now.getMinutes());
+  const durationMin = Math.max(0, Math.round((now.getTime() - activeEntryStartAt)/60000));
+  const entryId = activeEntryId;
+
+  const updates = {
+    status: 'done', end: endHM, durationMin,
+    taskType: currentTaskType(),
+    field: document.getElementById('inpField').value.trim(),
+    crop: document.getElementById('inpCrop').value.trim(),
+    note: document.getElementById('inpNote').value.trim(),
+    photo: currentPhoto
+  };
+  try{
+    await updateDoc(doc(entriesCol(), entryId), updates);
+    showToast(`作業を記録しました（${minutesToHM(durationMin)}）`);
+    getCurrentGpsAsync().then(gps=>{
+      if(gps) updateDoc(doc(entriesCol(), entryId), {gpsEnd: gps}).catch(()=>{});
+    });
+    clearActiveEntryLocal();
+    activeEntryId = null;
+    activeEntryStartAt = null;
+    exitInProgressUI();
+    resetForm();
+  }catch(e){
+    console.error(e);
+    showToast('終了の記録に失敗しました');
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+async function resumeActiveEntryIfAny(){
+  const local = loadActiveEntryLocal();
+  if(local && local.id){
+    try{
+      const snap = await getDoc(doc(entriesCol(), local.id));
+      if(snap.exists() && snap.data().status === 'in_progress'){
+        activeEntryId = local.id;
+        activeEntryStartAt = local.startAt;
+        enterInProgressUI();
+        return;
+      }
+    }catch(e){ console.error(e); }
+    clearActiveEntryLocal();
+  }
+  try{
+    const q = query(entriesCol(), where('workerName','==',workerName), where('status','==','in_progress'), limit(1));
+    const snap = await getDocs(q);
+    if(!snap.empty){
+      const d = snap.docs[0];
+      activeEntryId = d.id;
+      activeEntryStartAt = d.data().startAt || Date.now();
+      saveActiveEntryLocal({id: d.id, startAt: activeEntryStartAt});
+      enterInProgressUI();
+    }
+  }catch(e){ console.error('resume query failed', e); }
+}
+
+function enterInProgressUI(){
+  const btn = document.getElementById('gpsToggleBtn');
+  btn.textContent = '⏹ 作業終了';
+  btn.classList.add('active');
+  document.getElementById('inpDate').disabled = true;
+  startTimerDisplay();
+}
+function exitInProgressUI(){
+  const btn = document.getElementById('gpsToggleBtn');
+  btn.textContent = '📍 GPSで作業開始';
+  btn.classList.remove('active');
+  document.getElementById('inpDate').disabled = false;
+  stopTimerDisplay();
+  document.getElementById('workStatusDisplay').textContent = '';
+}
+function startTimerDisplay(){
+  updateTimerText();
+  if(timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(updateTimerText, 1000);
+}
+function stopTimerDisplay(){
+  if(timerInterval){ clearInterval(timerInterval); timerInterval = null; }
+}
+function updateTimerText(){
+  if(!activeEntryStartAt) return;
+  const elapsedSec = Math.floor((Date.now() - activeEntryStartAt)/1000);
+  const h = Math.floor(elapsedSec/3600);
+  const m = Math.floor((elapsedSec%3600)/60);
+  const s = elapsedSec%60;
+  const label = h>0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+  document.getElementById('workStatusDisplay').textContent = `作業中... 経過 ${label}`;
+}
+
+/* ---------- manual entry (backfill past dates) ---------- */
+async function saveManualEntry(){
+  const date = document.getElementById('inpDate').value || todayStr();
   const start = document.getElementById('inpStart').value;
   const end = document.getElementById('inpEnd').value;
-  const note = document.getElementById('inpNote').value.trim();
-
   const entry = {
-    id: genId(),
-    date, taskType, field, crop, start, end,
+    date,
+    taskType: currentTaskType(),
+    field: document.getElementById('inpField').value.trim(),
+    crop: document.getElementById('inpCrop').value.trim(),
+    start, end,
     durationMin: calcDuration(start, end),
-    note,
-    gps: currentGps,
+    status: 'done',
+    note: document.getElementById('inpNote').value.trim(),
+    gpsStart: null, gpsEnd: null,
     photo: currentPhoto,
+    workerName,
     createdAt: Date.now()
   };
-
   const btn = document.getElementById('saveEntryBtn');
   btn.disabled = true;
   btn.textContent = '保存中...';
   try{
-    const list = await loadDay(date);
-    list.push(entry);
-    const ok = await saveDay(date, list);
-    if(ok){
-      showToast('作業を記録しました');
-      resetForm();
-      await renderTodayTab();
-    } else {
-      showToast('保存に失敗しました。もう一度お試しください');
-    }
+    await addDoc(entriesCol(), entry);
+    showToast(navigator.onLine ? '作業を記録しました' : '端末に保存しました（電波が戻ると自動送信されます）');
+    resetForm();
   }catch(e){
     console.error(e);
     showToast('保存に失敗しました');
@@ -725,53 +1045,16 @@ function resetForm(){
   document.getElementById('inpField').value = '';
   document.getElementById('inpCrop').value = '';
   document.getElementById('inpNote').value = '';
-  const now = new Date();
-  document.getElementById('inpStart').value = pad(now.getHours())+':'+pad(now.getMinutes());
+  document.getElementById('inpStart').value = '';
   document.getElementById('inpEnd').value = '';
   document.getElementById('inpTaskOther').value = '';
   document.getElementById('inpTaskOther').style.display = 'none';
-  currentGps = null;
   currentPhoto = null;
-  document.getElementById('gpsResult').innerHTML = '';
-  document.getElementById('gpsBtn').classList.remove('active');
-  document.getElementById('gpsBtn').textContent = '📍 現在地を記録';
   document.getElementById('photoResult').innerHTML = '';
   document.getElementById('photoBtn').classList.remove('has-photo');
   document.getElementById('photoBtn').textContent = '📷 写真を撮る・選ぶ';
   document.getElementById('photoThumb').style.display = 'none';
   document.getElementById('durationHint').textContent = '';
-}
-
-/* ---------- GPS ---------- */
-function captureGps(){
-  if(!navigator.geolocation){
-    document.getElementById('gpsResult').textContent = 'この端末では位置情報を利用できません。';
-    return;
-  }
-  const btn = document.getElementById('gpsBtn');
-  btn.textContent = '📍 取得中...';
-  navigator.geolocation.getCurrentPosition(
-    (pos)=>{
-      const lat = pos.coords.latitude.toFixed(5);
-      const lon = pos.coords.longitude.toFixed(5);
-      const acc = Math.round(pos.coords.accuracy);
-      currentGps = {
-        lat, lon, accuracy: acc,
-        mapUrl: `https://www.google.com/maps?q=${lat},${lon}`
-      };
-      btn.textContent = '📍 記録済み（再取得）';
-      btn.classList.add('active');
-      document.getElementById('gpsResult').innerHTML =
-        `緯度 ${lat} / 経度 ${lon}（誤差約${acc}m） — <a href="${currentGps.mapUrl}" target="_blank" rel="noopener">地図で確認</a>`;
-    },
-    (err)=>{
-      btn.textContent = '📍 現在地を記録';
-      let msg = '位置情報を取得できませんでした。';
-      if(err.code === 1) msg = '位置情報の利用が許可されていません。端末の設定をご確認ください。';
-      document.getElementById('gpsResult').textContent = msg;
-    },
-    { enableHighAccuracy:true, timeout:10000 }
-  );
 }
 
 /* ---------- Photo ---------- */
@@ -793,12 +1076,19 @@ async function handlePhoto(file){
   }
 }
 
-/* ---------- Report ---------- */
-async function renderReportTab(){
+/* ---------- Report tab (live) ---------- */
+function subscribeReport(){
   const date = document.getElementById('reportDate').value || todayStr();
-  const entries = await loadDay(date);
-  entries.sort((a,b)=> (a.start||'').localeCompare(b.start||''));
+  if(unsubReport) unsubReport();
+  const q = query(entriesCol(), where('date','==',date));
+  unsubReport = onSnapshot(q, (snap)=>{
+    const entries = snap.docs.map(d=>({id:d.id, ...d.data(), _pending: d.metadata.hasPendingWrites}));
+    entries.sort((a,b)=> (a.start||'').localeCompare(b.start||''));
+    renderReportFromEntries(date, entries);
+  }, (err)=>console.error('report sync error', err));
+}
 
+function renderReportFromEntries(date, entries){
   const totalMin = entries.reduce((s,e)=> s + (e.durationMin||0), 0);
   document.getElementById('statTotalTime').textContent = minutesToHM(totalMin);
   document.getElementById('statCount').textContent = entries.length + '件';
@@ -821,11 +1111,7 @@ async function renderReportTab(){
   }
 
   const re = document.getElementById('reportEntries');
-  if(entries.length===0){
-    re.innerHTML = '';
-  } else {
-    re.innerHTML = `<div class="timeline">${entries.map(entryHtml).join('')}</div>`;
-  }
+  re.innerHTML = entries.length===0 ? '' : `<div class="timeline">${entries.map(e=>entryHtml(e,{showActions:false})).join('')}</div>`;
 
   window._reportCache = { date, entries, totalMin, byTask };
 }
@@ -833,8 +1119,8 @@ async function renderReportTab(){
 function buildReportText(){
   const c = window._reportCache;
   if(!c) return '';
-  const settings = { farmName: document.getElementById('farmNameInput').value || document.getElementById('farmNameDisp').textContent };
-  let txt = `作業日報\n${dispDate(c.date)}\n${settings.farmName}\n\n`;
+  const farmName = document.getElementById('farmNameInput').value || document.getElementById('farmNameDisp').textContent;
+  let txt = `作業日報\n${dispDate(c.date)}\n${farmName}\n\n`;
   txt += `合計作業時間: ${minutesToHM(c.totalMin)}　作業件数: ${c.entries.length}件\n\n`;
   txt += `【内訳】\n`;
   Object.keys(c.byTask).forEach(k=>{
@@ -845,6 +1131,7 @@ function buildReportText(){
     txt += `${e.start||'--:--'}〜${e.end||'--:--'} ${e.taskType}`;
     if(e.field) txt += `（${e.field}${e.crop ? '・'+e.crop : ''}）`;
     if(e.durationMin!=null) txt += ` [${minutesToHM(e.durationMin)}]`;
+    if(e.workerName) txt += ` - ${e.workerName}`;
     txt += `\n`;
     if(e.note) txt += `  メモ: ${e.note}\n`;
     if(e.gps) txt += `  位置: ${e.gps.lat}, ${e.gps.lon}\n`;
@@ -863,6 +1150,7 @@ function preparePrint(){
     html += `<div class="print-entry"><b>${e.start||'--:--'}〜${e.end||'--:--'} ${escapeHtml(e.taskType)}</b>`;
     if(e.field) html += ` — ${escapeHtml(e.field)}${e.crop ? '・'+escapeHtml(e.crop) : ''}`;
     if(e.durationMin!=null) html += ` (${minutesToHM(e.durationMin)})`;
+    if(e.workerName) html += ` / ${escapeHtml(e.workerName)}`;
     if(e.note) html += `<br>メモ: ${escapeHtml(e.note)}`;
     if(e.gps) html += `<br>位置: ${e.gps.lat}, ${e.gps.lon}`;
     html += `</div>`;
@@ -873,35 +1161,66 @@ function preparePrint(){
 
 /* ---------- History ---------- */
 async function renderHistoryTab(){
-  const idx = await loadIndex();
   const el = document.getElementById('historyList');
-  if(idx.length===0){
-    el.innerHTML = `<div class="empty"><div class="icon">📭</div>まだ記録がありません。</div>`;
-    return;
-  }
-  const rows = await Promise.all(idx.map(async d=>{
-    const entries = await loadDay(d);
-    const totalMin = entries.reduce((s,e)=>s+(e.durationMin||0),0);
-    return {date:d, count:entries.length, totalMin};
-  }));
-  el.innerHTML = rows.map(r=>`
-    <div class="history-item" data-date="${r.date}">
-      <div>
-        <div class="history-date">${dispDate(r.date)}</div>
-        <div class="history-sub">${r.count}件の記録 ／ 合計 ${minutesToHM(r.totalMin)}</div>
-      </div>
-      <div class="history-arrow">›</div>
-    </div>`).join('');
-  el.querySelectorAll('.history-item').forEach(item=>{
-    item.addEventListener('click', ()=>{
-      document.getElementById('reportDate').value = item.dataset.date;
-      switchTab('report');
+  el.innerHTML = `<div class="empty">読み込み中...</div>`;
+  try{
+    const q = query(entriesCol(), orderBy('date','desc'), limit(2000));
+    const snap = await getDocs(q);
+    const byDate = {};
+    snap.docs.forEach(d=>{
+      const e = d.data();
+      if(!byDate[e.date]) byDate[e.date] = {count:0, totalMin:0};
+      byDate[e.date].count++;
+      byDate[e.date].totalMin += (e.durationMin||0);
     });
-  });
+    const dates = Object.keys(byDate).sort().reverse();
+    if(dates.length===0){
+      el.innerHTML = `<div class="empty"><div class="icon">📭</div>まだ記録がありません。</div>`;
+      return;
+    }
+    el.innerHTML = dates.map(d=>`
+      <div class="history-item" data-date="${d}">
+        <div>
+          <div class="history-date">${dispDate(d)}</div>
+          <div class="history-sub">${byDate[d].count}件の記録 ／ 合計 ${minutesToHM(byDate[d].totalMin)}</div>
+        </div>
+        <div class="history-arrow">›</div>
+      </div>`).join('');
+    el.querySelectorAll('.history-item').forEach(item=>{
+      item.addEventListener('click', ()=>{
+        document.getElementById('reportDate').value = item.dataset.date;
+        switchTab('report');
+      });
+    });
+  }catch(e){
+    console.error(e);
+    el.innerHTML = `<div class="empty">履歴の取得に失敗しました。電波の良い場所でもう一度お試しください。</div>`;
+  }
 }
 
-/* ---------- events ---------- */
-function bindEvents(){
+/* ---------- tab switching ---------- */
+function switchTab(name){
+  currentTab = name;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  document.querySelectorAll('.tabbar button').forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
+  if(name==='report') subscribeReport();
+  if(name==='history') renderHistoryTab();
+}
+
+function updateDurationHint(){
+  const start = document.getElementById('inpStart').value;
+  const end = document.getElementById('inpEnd').value;
+  const dur = calcDuration(start, end);
+  document.getElementById('durationHint').textContent = dur!=null ? `作業時間: ${minutesToHM(dur)}` : '';
+}
+
+/* ---------- events (bound once) ---------- */
+let eventsBound = false;
+function bindTabEvents(){
+  if(eventsBound) return;
+  eventsBound = true;
+
   document.querySelectorAll('.tabbar button').forEach(b=>{
     b.addEventListener('click', ()=> switchTab(b.dataset.tab));
   });
@@ -910,26 +1229,47 @@ function bindEvents(){
     document.getElementById('settingsPanel').classList.toggle('open');
   });
   document.getElementById('saveSettingsBtn').addEventListener('click', async ()=>{
-    const name = document.getElementById('farmNameInput').value.trim();
-    await saveSettings({farmName:name});
-    document.getElementById('farmNameDisp').textContent = name || '農場名未設定（⚙で設定）';
+    const newFarmName = document.getElementById('farmNameInput').value.trim();
+    const newWorkerName = document.getElementById('workerNameInput').value.trim();
+    const newFarmCode = document.getElementById('farmCodeInput').value.trim();
+    if(!newWorkerName || !newFarmCode){
+      showToast('表示名と農場コードを入力してください');
+      return;
+    }
+    const codeChanged = newFarmCode !== farmCode;
+    workerName = newWorkerName;
+    farmCode = newFarmCode;
+    const defaultName = currentUser ? (currentUser.displayName || currentUser.email || '') : '';
+    saveDeviceConfig({farmCode, workerNameOverride: newWorkerName !== defaultName ? newWorkerName : ''});
+    await saveFarmName(newFarmName);
     document.getElementById('settingsPanel').classList.remove('open');
     showToast('設定を保存しました');
-  });
-  document.getElementById('resetDataBtn').addEventListener('click', async ()=>{
-    if(!confirm('すべての記録を削除します。この操作は取り消せません。よろしいですか？')) return;
-    const idx = await loadIndex();
-    for(const d of idx){
-      try{ await idbDelete('day:'+d); }catch(e){}
+    if(codeChanged){
+      subscribeFields();
+      subscribeSettings();
+      subscribeToday();
+      if(currentTab==='report') subscribeReport();
+      if(currentTab==='history') renderHistoryTab();
     }
-    try{ await idbDelete('day-index'); }catch(e){}
-    try{ await idbDelete('known-fields'); }catch(e){}
-    try{ await idbDelete('fields'); }catch(e){}
-    showToast('全データを削除しました');
-    renderTodayTab(); renderReportTab(); renderHistoryTab(); refreshFieldUI();
   });
+  document.getElementById('logoutBtn').addEventListener('click', async ()=>{
+    if(!confirm('ログアウトします。この端末の農場コードの設定もリセットされます。よろしいですか？')) return;
+    try{ await signOut(auth); }catch(e){ console.error(e); }
+    localStorage.removeItem('hatanote-device-config');
+    location.reload();
+  });
+  document.getElementById('googleLoginBtn').addEventListener('click', ()=>{
+    signInWithRedirect(auth, googleProvider).catch((e)=>{
+      console.error(e);
+      document.getElementById('setupStatus').textContent = 'ログインに失敗しました。もう一度お試しください。';
+    });
+  });
+  document.getElementById('setupFarmCode').addEventListener('input', updateAuthUI);
 
-  document.getElementById('inpDate').addEventListener('change', renderTodayTab);
+  document.getElementById('inpDate').addEventListener('change', ()=>{
+    updateFormModeForDate();
+    subscribeToday();
+  });
   document.getElementById('inpStart').addEventListener('change', updateDurationHint);
   document.getElementById('inpEnd').addEventListener('change', updateDurationHint);
 
@@ -937,7 +1277,7 @@ function bindEvents(){
     document.getElementById('inpTaskOther').style.display = e.target.value==='その他（自由入力）' ? 'block' : 'none';
   });
 
-  document.getElementById('gpsBtn').addEventListener('click', captureGps);
+  document.getElementById('gpsToggleBtn').addEventListener('click', toggleGpsWork);
 
   document.getElementById('manageFieldsBtn').addEventListener('click', ()=>{
     document.getElementById('fieldManager').classList.toggle('open');
@@ -948,7 +1288,6 @@ function bindEvents(){
     if(!name){ input.focus(); return; }
     await addField(name);
     input.value = '';
-    await refreshFieldUI();
     document.getElementById('inpField').value = name;
     showToast('圃場を追加しました');
   });
@@ -963,9 +1302,9 @@ function bindEvents(){
     handlePhoto(e.target.files[0]);
   });
 
-  document.getElementById('saveEntryBtn').addEventListener('click', saveEntry);
+  document.getElementById('saveEntryBtn').addEventListener('click', saveManualEntry);
 
-  document.getElementById('reportDate').addEventListener('change', renderReportTab);
+  document.getElementById('reportDate').addEventListener('change', subscribeReport);
   document.getElementById('printBtn').addEventListener('click', preparePrint);
   document.getElementById('copyBtn').addEventListener('click', async ()=>{
     const txt = buildReportText();
@@ -976,18 +1315,48 @@ function bindEvents(){
       showToast('コピーできませんでした');
     }
   });
+
+  document.getElementById('setupSaveBtn').addEventListener('click', handleSetupSave);
+
+  window.addEventListener('online', setSyncStatus);
+  window.addEventListener('offline', setSyncStatus);
 }
 
-function updateDurationHint(){
-  const start = document.getElementById('inpStart').value;
-  const end = document.getElementById('inpEnd').value;
-  const dur = calcDuration(start, end);
-  document.getElementById('durationHint').textContent = dur!=null ? `作業時間: ${minutesToHM(dur)}` : '';
-}
+/* ---------- entry point ---------- */
+(async function main(){
+  bindTabEvents();
+  initFirebase();
 
-init();
+  try{ await getRedirectResult(auth); }
+  catch(e){ console.error('Google sign-in redirect error', e); }
+
+  onAuthStateChanged(auth, async (user)=>{
+    currentUser = user;
+    updateAuthUI();
+
+    if(appStarted) return;
+
+    if(user){
+      const cfg = loadDeviceConfig();
+      if(cfg && cfg.farmCode){
+        farmCode = cfg.farmCode;
+        workerName = cfg.workerNameOverride || user.displayName || user.email || '匿名';
+        document.getElementById('workerNameInput').value = workerName;
+        document.getElementById('farmCodeInput').value = farmCode;
+        hideSetupScreen();
+        appStarted = true;
+        await startApp();
+      } else {
+        showSetupScreen(cfg ? cfg.farmCode : '');
+      }
+    } else {
+      showSetupScreen();
+    }
+  });
 })();
+</script>
 
+<script>
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
     navigator.serviceWorker.register('service-worker.js').catch(()=>{});
