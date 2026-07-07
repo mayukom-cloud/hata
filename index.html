@@ -235,6 +235,7 @@ main{padding:16px; max-width:640px; margin:0 auto;}
 .breakdown-row{display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px dashed var(--line); font-size:14px;}
 .breakdown-row:last-child{border-bottom:none;}
 .report-actions{display:flex; gap:10px; margin:14px 0;}
+.sheet-export-status{font-size:12px; color:var(--ink-soft); margin-top:8px; text-align:center;}
 
 /* History */
 .history-item{display:flex; justify-content:space-between; align-items:center; padding:14px; border:1px solid var(--line); border-radius:12px; margin-bottom:10px; background:#fff; cursor:pointer;}
@@ -319,6 +320,10 @@ main{padding:16px; max-width:640px; margin:0 auto;}
     <label>農場コード</label>
     <input type="text" id="farmCodeInput" placeholder="農場コード">
     <div class="hint" style="opacity:0.75; font-size:11px; margin-top:2px;">コードを変えると別の農場データに切り替わります（新しい端末を仲間に追加する時は、同じコードを入力してもらってください）。</div>
+    <label>Google スプレッドシートID（日報の転記先・全員に共通）</label>
+    <input type="text" id="sheetIdInput" placeholder="スプレッドシートのURLの/d/と/editの間の文字列">
+    <label>シート名・開始セル</label>
+    <input type="text" id="sheetRangeInput" placeholder="例）Sheet1!A1">
     <div class="row-btns">
       <button class="save" id="saveSettingsBtn">保存</button>
       <button class="reset" id="logoutBtn">ログアウト</button>
@@ -437,6 +442,8 @@ main{padding:16px; max-width:640px; margin:0 auto;}
         <button class="btn btn-outline" id="printBtn" style="flex:1;">🖨 印刷用に表示</button>
         <button class="btn btn-outline" id="copyBtn" style="flex:1;">📋 テキストをコピー</button>
       </div>
+      <button class="btn btn-primary" id="sheetExportBtn">📊 スプレッドシートに転記</button>
+      <div class="sheet-export-status" id="sheetExportStatus"></div>
     </div>
     <div id="reportEntries"></div>
   </section>
@@ -497,6 +504,7 @@ const TASK_ICONS = {
 let app, db, auth;
 let googleProvider;
 let currentUser = null;
+let sheetsAccessToken = null;
 let appStarted = false;
 let farmCode = '';
 let workerName = '';
@@ -605,6 +613,7 @@ function initFirebase(){
   });
   auth = getAuth(app);
   googleProvider = new GoogleAuthProvider();
+  googleProvider.addScope('https://www.googleapis.com/auth/spreadsheets');
 }
 
 function setSyncStatus(){
@@ -744,19 +753,35 @@ async function addField(name){
   catch(e){ console.error(e); showToast('追加に失敗しました（電波を確認してください）'); }
 }
 
-/* ---------- shared settings (farm display name) ---------- */
+/* ---------- shared settings (farm display name, spreadsheet target) ---------- */
+let currentSheetId = '';
+let currentSheetRange = 'Sheet1!A1';
+
 function subscribeSettings(){
   if(unsubSettings) unsubSettings();
   unsubSettings = onSnapshot(metaSettingsRef(), (snap)=>{
-    const farmName = snap.exists() ? (snap.data().farmName || '') : '';
+    const data = snap.exists() ? snap.data() : {};
+    const farmName = data.farmName || '';
+    currentSheetId = data.sheetId || '';
+    currentSheetRange = data.sheetRange || 'Sheet1!A1';
     document.getElementById('farmNameDisp').textContent = farmName || '農場名未設定（⚙で設定）';
     if(document.activeElement !== document.getElementById('farmNameInput')){
       document.getElementById('farmNameInput').value = farmName;
+    }
+    if(document.activeElement !== document.getElementById('sheetIdInput')){
+      document.getElementById('sheetIdInput').value = currentSheetId;
+    }
+    if(document.activeElement !== document.getElementById('sheetRangeInput')){
+      document.getElementById('sheetRangeInput').value = currentSheetRange;
     }
   }, (err)=>console.error('settings sync error', err));
 }
 async function saveFarmName(name){
   try{ await setDoc(metaSettingsRef(), {farmName:name}, {merge:true}); }
+  catch(e){ console.error(e); showToast('保存に失敗しました（電波を確認してください）'); }
+}
+async function saveSheetSettings(sheetId, sheetRange){
+  try{ await setDoc(metaSettingsRef(), {sheetId, sheetRange}, {merge:true}); }
   catch(e){ console.error(e); showToast('保存に失敗しました（電波を確認してください）'); }
 }
 
@@ -1159,6 +1184,96 @@ function preparePrint(){
   window.print();
 }
 
+/* ---------- Google Sheets export ---------- */
+async function ensureSheetsToken(){
+  if(sheetsAccessToken) return sheetsAccessToken;
+  const result = await signInWithPopup(auth, googleProvider);
+  const cred = GoogleAuthProvider.credentialFromResult(result);
+  sheetsAccessToken = cred && cred.accessToken ? cred.accessToken : null;
+  return sheetsAccessToken;
+}
+
+function buildSheetRows(c){
+  return c.entries.map(e=>[
+    c.date,
+    e.start || '',
+    e.status === 'in_progress' ? '(作業中)' : (e.end || ''),
+    e.durationMin != null ? minutesToHM(e.durationMin) : '',
+    e.workerName || '',
+    e.field || '',
+    e.crop || '',
+    e.taskType || '',
+    e.note || '',
+    (e.gpsStart && e.gpsStart.mapUrl) || '',
+    (e.gpsEnd && e.gpsEnd.mapUrl) || ''
+  ]);
+}
+
+async function exportToSheet(){
+  const status = document.getElementById('sheetExportStatus');
+  const c = window._reportCache;
+  if(!c || c.entries.length===0){
+    status.textContent = 'この日の記録がありません。';
+    return;
+  }
+  if(!currentSheetId){
+    status.textContent = '⚙設定からスプレッドシートIDを登録してください。';
+    return;
+  }
+  const btn = document.getElementById('sheetExportBtn');
+  btn.disabled = true;
+  status.textContent = '転記中...';
+  try{
+    const token = await ensureSheetsToken();
+    if(!token) throw new Error('no-token');
+    const rows = buildSheetRows(c);
+    const range = encodeURIComponent(currentSheetRange || 'Sheet1!A1');
+    const res = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${currentSheetId}/values/${range}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ values: rows })
+      }
+    );
+    if(res.status === 401){
+      // token expired — get a fresh one and retry once
+      sheetsAccessToken = null;
+      const freshToken = await ensureSheetsToken();
+      const retryRes = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${currentSheetId}/values/${range}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${freshToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ values: rows })
+        }
+      );
+      if(!retryRes.ok) throw new Error('sheets-api-error-' + retryRes.status);
+    } else if(!res.ok){
+      throw new Error('sheets-api-error-' + res.status);
+    }
+    status.textContent = `✅ ${rows.length}件を転記しました（${dispDate(c.date)}）`;
+    showToast('スプレッドシートに転記しました');
+  }catch(e){
+    console.error(e);
+    if(String(e.message).includes('403')){
+      status.textContent = '権限がありません。スプレッドシートIDと、ご自身のGoogleアカウントに編集権限があるか確認してください。';
+    } else if(String(e.message).includes('404')){
+      status.textContent = 'スプレッドシートが見つかりません。IDをご確認ください。';
+    } else {
+      status.textContent = '転記に失敗しました。もう一度お試しください。';
+    }
+  }finally{
+    btn.disabled = false;
+  }
+}
+
 /* ---------- History ---------- */
 async function renderHistoryTab(){
   const el = document.getElementById('historyList');
@@ -1232,6 +1347,10 @@ function bindTabEvents(){
     const newFarmName = document.getElementById('farmNameInput').value.trim();
     const newWorkerName = document.getElementById('workerNameInput').value.trim();
     const newFarmCode = document.getElementById('farmCodeInput').value.trim();
+    let newSheetId = document.getElementById('sheetIdInput').value.trim();
+    const newSheetRange = document.getElementById('sheetRangeInput').value.trim() || 'Sheet1!A1';
+    const urlMatch = newSheetId.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+    if(urlMatch) newSheetId = urlMatch[1];
     if(!newWorkerName || !newFarmCode){
       showToast('表示名と農場コードを入力してください');
       return;
@@ -1242,6 +1361,8 @@ function bindTabEvents(){
     const defaultName = currentUser ? (currentUser.displayName || currentUser.email || '') : '';
     saveDeviceConfig({farmCode, workerNameOverride: newWorkerName !== defaultName ? newWorkerName : ''});
     await saveFarmName(newFarmName);
+    await saveSheetSettings(newSheetId, newSheetRange);
+    document.getElementById('sheetIdInput').value = newSheetId;
     document.getElementById('settingsPanel').classList.remove('open');
     showToast('設定を保存しました');
     if(codeChanged){
@@ -1262,7 +1383,9 @@ function bindTabEvents(){
     const status = document.getElementById('setupStatus');
     status.textContent = 'ログイン中...';
     try{
-      await signInWithPopup(auth, googleProvider);
+      const result = await signInWithPopup(auth, googleProvider);
+      const cred = GoogleAuthProvider.credentialFromResult(result);
+      if(cred && cred.accessToken) sheetsAccessToken = cred.accessToken;
       status.textContent = '';
     }catch(e){
       console.error(e);
@@ -1319,6 +1442,7 @@ function bindTabEvents(){
 
   document.getElementById('reportDate').addEventListener('change', subscribeReport);
   document.getElementById('printBtn').addEventListener('click', preparePrint);
+  document.getElementById('sheetExportBtn').addEventListener('click', exportToSheet);
   document.getElementById('copyBtn').addEventListener('click', async ()=>{
     const txt = buildReportText();
     try{
