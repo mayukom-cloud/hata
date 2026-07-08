@@ -337,8 +337,10 @@ main{padding:16px; max-width:640px; margin:0 auto;}
     <div class="hint" style="opacity:0.75; font-size:11px; margin-top:2px;">コードを変えると別の農場データに切り替わります（新しい端末を仲間に追加する時は、同じコードを入力してもらってください）。</div>
     <label>Google スプレッドシートID（日報の転記先・全員に共通）</label>
     <input type="text" id="sheetIdInput" placeholder="スプレッドシートのURLの/d/と/editの間の文字列">
-    <label>シート名・開始セル</label>
+    <label>作業記録：シート名・開始セル</label>
     <input type="text" id="sheetRangeInput" placeholder="例）Sheet1!A1">
+    <label>出退勤：シート名・開始セル</label>
+    <input type="text" id="attendSheetRangeInput" placeholder="例）出退勤!A1">
     <div class="row-btns">
       <button class="save" id="saveSettingsBtn">保存</button>
       <button class="reset" id="logoutBtn">ログアウト</button>
@@ -467,6 +469,14 @@ main{padding:16px; max-width:640px; margin:0 auto;}
       <button class="btn btn-primary" id="sheetExportBtn">📊 スプレッドシートに転記</button>
       <div class="sheet-export-status" id="sheetExportStatus"></div>
     </div>
+
+    <div class="card">
+      <h2>🕐 出退勤</h2>
+      <div id="reportAttendanceList"></div>
+      <button class="btn btn-primary" id="attendSheetExportBtn">📊 出退勤をスプレッドシートに転記</button>
+      <div class="sheet-export-status" id="attendSheetExportStatus"></div>
+    </div>
+
     <div id="reportEntries"></div>
   </section>
 
@@ -534,6 +544,7 @@ let currentPhoto = null;
 let currentTab = 'input';
 let unsubToday = null;
 let unsubReport = null;
+let unsubReportAttendance = null;
 let unsubFields = null;
 let unsubSettings = null;
 let activeEntryId = null;
@@ -795,6 +806,7 @@ async function addField(name){
 /* ---------- shared settings (farm display name, spreadsheet target) ---------- */
 let currentSheetId = '';
 let currentSheetRange = 'Sheet1!A1';
+let currentAttendSheetRange = '出退勤!A1';
 
 function subscribeSettings(){
   if(unsubSettings) unsubSettings();
@@ -803,6 +815,7 @@ function subscribeSettings(){
     const farmName = data.farmName || '';
     currentSheetId = data.sheetId || '';
     currentSheetRange = data.sheetRange || 'Sheet1!A1';
+    currentAttendSheetRange = data.attendSheetRange || '出退勤!A1';
     document.getElementById('farmNameDisp').textContent = farmName || '農場名未設定（⚙で設定）';
     if(document.activeElement !== document.getElementById('farmNameInput')){
       document.getElementById('farmNameInput').value = farmName;
@@ -813,14 +826,17 @@ function subscribeSettings(){
     if(document.activeElement !== document.getElementById('sheetRangeInput')){
       document.getElementById('sheetRangeInput').value = currentSheetRange;
     }
+    if(document.activeElement !== document.getElementById('attendSheetRangeInput')){
+      document.getElementById('attendSheetRangeInput').value = currentAttendSheetRange;
+    }
   }, (err)=>console.error('settings sync error', err));
 }
 async function saveFarmName(name){
   try{ await setDoc(metaSettingsRef(), {farmName:name}, {merge:true}); }
   catch(e){ console.error(e); showToast('保存に失敗しました（電波を確認してください）'); }
 }
-async function saveSheetSettings(sheetId, sheetRange){
-  try{ await setDoc(metaSettingsRef(), {sheetId, sheetRange}, {merge:true}); }
+async function saveSheetSettings(sheetId, sheetRange, attendSheetRange){
+  try{ await setDoc(metaSettingsRef(), {sheetId, sheetRange, attendSheetRange}, {merge:true}); }
   catch(e){ console.error(e); showToast('保存に失敗しました（電波を確認してください）'); }
 }
 
@@ -1295,6 +1311,29 @@ function subscribeReport(){
     entries.sort((a,b)=> (a.start||'').localeCompare(b.start||''));
     renderReportFromEntries(date, entries);
   }, (err)=>console.error('report sync error', err));
+  subscribeReportAttendance(date);
+}
+
+function subscribeReportAttendance(date){
+  if(unsubReportAttendance) unsubReportAttendance();
+  const q = query(attendanceCol(), where('date','==',date));
+  unsubReportAttendance = onSnapshot(q, (snap)=>{
+    const records = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    records.sort((a,b)=> (a.clockIn||'').localeCompare(b.clockIn||''));
+    const el = document.getElementById('reportAttendanceList');
+    if(records.length===0){
+      el.innerHTML = `<div class="attend-empty">この日の出退勤記録はありません。</div>`;
+    } else {
+      el.innerHTML = records.map(r=>{
+        const working = r.status === 'in';
+        const range = working ? `${r.clockIn||'--:--'} 〜（勤務中）` : `${r.clockIn||'--:--'} 〜 ${r.clockOut||'--:--'}`;
+        const durText = (!working && r.clockInAt && r.clockOutAt)
+          ? `（${minutesToHM(Math.round((r.clockOutAt - r.clockInAt)/60000))}）` : '';
+        return `<div class="attend-row"><span class="name">👤 ${escapeHtml(r.workerName||'')}</span><span class="num">${range}${durText}</span></div>`;
+      }).join('');
+    }
+    window._reportAttendanceCache = { date, records };
+  }, (err)=>console.error('report attendance sync error', err));
 }
 
 function renderReportFromEntries(date, entries){
@@ -1458,6 +1497,74 @@ async function exportToSheet(){
   }
 }
 
+function buildAttendanceSheetRows(c){
+  return c.records.map(r=>[
+    c.date,
+    r.workerName || '',
+    r.clockIn || '',
+    r.status === 'in' ? '(勤務中)' : (r.clockOut || ''),
+    (!r.status || r.status !== 'in') && r.clockInAt && r.clockOutAt
+      ? minutesToHM(Math.round((r.clockOutAt - r.clockInAt)/60000)) : '',
+    (r.gpsIn && r.gpsIn.mapUrl) || '',
+    (r.gpsOut && r.gpsOut.mapUrl) || ''
+  ]);
+}
+
+async function exportAttendanceToSheet(){
+  const status = document.getElementById('attendSheetExportStatus');
+  const c = window._reportAttendanceCache;
+  if(!c || c.records.length===0){
+    status.textContent = 'この日の出退勤記録がありません。';
+    return;
+  }
+  if(!currentSheetId){
+    status.textContent = '⚙設定からスプレッドシートIDを登録してください。';
+    return;
+  }
+  const btn = document.getElementById('attendSheetExportBtn');
+  btn.disabled = true;
+  status.textContent = '転記中...';
+  try{
+    const token = await ensureSheetsToken();
+    if(!token) throw new Error('no-token');
+    const rows = buildAttendanceSheetRows(c);
+    const range = encodeURIComponent(currentAttendSheetRange || '出退勤!A1');
+    const doAppend = (tok)=> fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${currentSheetId}/values/${range}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${tok}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ values: rows })
+      }
+    );
+    let res = await doAppend(token);
+    if(res.status === 401){
+      sheetsAccessToken = null;
+      const freshToken = await ensureSheetsToken();
+      res = await doAppend(freshToken);
+    }
+    if(!res.ok) throw new Error('sheets-api-error-' + res.status);
+    status.textContent = `✅ ${rows.length}件を転記しました（${dispDate(c.date)}）`;
+    showToast('出退勤をスプレッドシートに転記しました');
+  }catch(e){
+    console.error(e);
+    if(String(e.message).includes('403')){
+      status.textContent = '権限がありません。スプレッドシートIDと編集権限をご確認ください。';
+    } else if(String(e.message).includes('404')){
+      status.textContent = 'スプレッドシートまたはシート名が見つかりません。';
+    } else if(String(e.message).includes('400')){
+      status.textContent = 'シート名が正しいかご確認ください（実際のタブ名と一致させてください）。';
+    } else {
+      status.textContent = '転記に失敗しました。もう一度お試しください。';
+    }
+  }finally{
+    btn.disabled = false;
+  }
+}
+
 /* ---------- History ---------- */
 async function renderHistoryTab(){
   const el = document.getElementById('historyList');
@@ -1533,6 +1640,7 @@ function bindTabEvents(){
     const newFarmCode = document.getElementById('farmCodeInput').value.trim();
     let newSheetId = document.getElementById('sheetIdInput').value.trim();
     const newSheetRange = document.getElementById('sheetRangeInput').value.trim() || 'Sheet1!A1';
+    const newAttendSheetRange = document.getElementById('attendSheetRangeInput').value.trim() || '出退勤!A1';
     const urlMatch = newSheetId.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
     if(urlMatch) newSheetId = urlMatch[1];
     if(!newWorkerName || !newFarmCode){
@@ -1545,7 +1653,7 @@ function bindTabEvents(){
     const defaultName = currentUser ? (currentUser.displayName || currentUser.email || '') : '';
     saveDeviceConfig({farmCode, workerNameOverride: newWorkerName !== defaultName ? newWorkerName : ''});
     await saveFarmName(newFarmName);
-    await saveSheetSettings(newSheetId, newSheetRange);
+    await saveSheetSettings(newSheetId, newSheetRange, newAttendSheetRange);
     document.getElementById('sheetIdInput').value = newSheetId;
     document.getElementById('settingsPanel').classList.remove('open');
     showToast('設定を保存しました');
@@ -1628,6 +1736,7 @@ function bindTabEvents(){
   document.getElementById('reportDate').addEventListener('change', subscribeReport);
   document.getElementById('printBtn').addEventListener('click', preparePrint);
   document.getElementById('sheetExportBtn').addEventListener('click', exportToSheet);
+  document.getElementById('attendSheetExportBtn').addEventListener('click', exportAttendanceToSheet);
   document.getElementById('copyBtn').addEventListener('click', async ()=>{
     const txt = buildReportText();
     try{
