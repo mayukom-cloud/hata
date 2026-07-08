@@ -177,6 +177,21 @@ main{padding:16px; max-width:640px; margin:0 auto;}
   50%{ box-shadow:0 0 0 8px rgba(180,70,46,0); }
 }
 .work-status{font-size:13px; margin-top:8px; color:var(--ink-soft); font-weight:700;}
+
+.btn-attend-toggle{background:var(--accent-soft); color:#6B4708; width:100%; font-size:16px;}
+.btn-attend-toggle.active{
+  background:var(--accent); color:#3B2606;
+  animation:pulse-attend 1.6s ease-in-out infinite;
+}
+@keyframes pulse-attend{
+  0%,100%{ box-shadow:0 0 0 0 rgba(217,142,43,0.35); }
+  50%{ box-shadow:0 0 0 8px rgba(217,142,43,0); }
+}
+.attend-row{display:flex; justify-content:space-between; align-items:center; padding:8px 4px; border-bottom:1px dashed var(--line); font-size:13px;}
+.attend-row:last-child{border-bottom:none;}
+.attend-row .name{font-weight:700;}
+.attend-row .badge-working{background:var(--danger-soft); color:var(--danger); font-size:11px; padding:2px 8px; border-radius:20px; font-weight:700;}
+.attend-empty{font-size:12px; color:var(--ink-soft); padding:4px;}
 .btn-photo{background:var(--soil-soft); color:#4A2F17; width:100%;}
 .btn-photo.has-photo{background:var(--soil); color:#fff;}
 .btn-block{width:100%;}
@@ -335,6 +350,13 @@ main{padding:16px; max-width:640px; margin:0 auto;}
 
   <!-- 入力タブ -->
   <section class="tab active" id="tab-input">
+    <div class="card">
+      <h2>🕐 出退勤</h2>
+      <button class="btn btn-attend-toggle" id="attendToggleBtn" type="button">🕐 出勤する</button>
+      <div class="work-status" id="attendStatusDisplay"></div>
+      <div id="attendanceList" style="margin-top:10px;"></div>
+    </div>
+
     <div class="card">
       <h2>📝 作業を記録</h2>
       <div class="field">
@@ -517,6 +539,10 @@ let unsubSettings = null;
 let activeEntryId = null;
 let activeEntryStartAt = null;
 let timerInterval = null;
+let unsubAttendance = null;
+let activeAttendanceId = null;
+let activeAttendanceStartAt = null;
+let attendTimerInterval = null;
 
 function pad(n){ return String(n).padStart(2,'0'); }
 function todayStr(){
@@ -569,9 +595,20 @@ function saveActiveEntryLocal(obj){
 function clearActiveEntryLocal(){
   localStorage.removeItem('hatanote-active-entry');
 }
+function loadActiveAttendanceLocal(){
+  try{ return JSON.parse(localStorage.getItem('hatanote-active-attendance') || 'null'); }
+  catch(e){ return null; }
+}
+function saveActiveAttendanceLocal(obj){
+  localStorage.setItem('hatanote-active-attendance', JSON.stringify(obj));
+}
+function clearActiveAttendanceLocal(){
+  localStorage.removeItem('hatanote-active-attendance');
+}
 
 /* ---------- Firestore refs ---------- */
 function entriesCol(){ return collection(db, 'farms', farmCode, 'entries'); }
+function attendanceCol(){ return collection(db, 'farms', farmCode, 'attendance'); }
 function metaFieldsRef(){ return doc(db, 'farms', farmCode, 'meta', 'fields'); }
 function metaSettingsRef(){ return doc(db, 'farms', farmCode, 'meta', 'settings'); }
 
@@ -698,7 +735,9 @@ async function startApp(){
   subscribeFields();
   subscribeSettings();
   subscribeToday();
+  subscribeAttendanceToday();
   await resumeActiveEntryIfAny();
+  await resumeActiveAttendanceIfAny();
 }
 
 function updateFormModeForDate(){
@@ -1029,6 +1068,151 @@ function updateTimerText(){
   const s = elapsedSec%60;
   const label = h>0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
   document.getElementById('workStatusDisplay').textContent = `作業中... 経過 ${label}`;
+}
+
+/* ---------- attendance (clock-in / clock-out) ---------- */
+function subscribeAttendanceToday(){
+  if(unsubAttendance) unsubAttendance();
+  const q = query(attendanceCol(), where('date','==',todayStr()));
+  unsubAttendance = onSnapshot(q, (snap)=>{
+    const records = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    records.sort((a,b)=> (a.clockIn||'').localeCompare(b.clockIn||''));
+    const el = document.getElementById('attendanceList');
+    if(records.length===0){
+      el.innerHTML = `<div class="attend-empty">本日はまだ誰も出勤していません。</div>`;
+      return;
+    }
+    el.innerHTML = records.map(r=>{
+      const working = r.status === 'in';
+      const range = working ? `${r.clockIn||'--:--'} 〜` : `${r.clockIn||'--:--'} 〜 ${r.clockOut||'--:--'}`;
+      const durText = (!working && r.clockInAt && r.clockOutAt)
+        ? `（${minutesToHM(Math.round((r.clockOutAt - r.clockInAt)/60000))}）` : '';
+      const badge = working ? `<span class="badge-working">勤務中</span>` : '';
+      return `<div class="attend-row"><span class="name">👤 ${escapeHtml(r.workerName||'')}</span><span class="num">${range}${durText} ${badge}</span></div>`;
+    }).join('');
+  }, (err)=>console.error('attendance sync error', err));
+}
+
+async function toggleAttendance(){
+  if(activeAttendanceId) await clockOut();
+  else await clockIn();
+}
+
+async function clockIn(){
+  const btn = document.getElementById('attendToggleBtn');
+  btn.disabled = true;
+  const now = new Date();
+  const hm = pad(now.getHours())+':'+pad(now.getMinutes());
+  const record = {
+    date: todayStr(),
+    workerName,
+    clockIn: hm, clockInAt: now.getTime(),
+    clockOut: null, clockOutAt: null,
+    gpsIn: null, gpsOut: null,
+    status: 'in'
+  };
+  try{
+    const ref = await addDoc(attendanceCol(), record);
+    activeAttendanceId = ref.id;
+    activeAttendanceStartAt = now.getTime();
+    saveActiveAttendanceLocal({id: ref.id, startAt: activeAttendanceStartAt});
+    enterAttendanceInProgressUI();
+    showToast('出勤しました');
+    getCurrentGpsAsync().then(gps=>{
+      if(gps) updateDoc(doc(attendanceCol(), ref.id), {gpsIn: gps}).catch(()=>{});
+    });
+  }catch(e){
+    console.error(e);
+    showToast('出勤の記録に失敗しました');
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+async function clockOut(){
+  if(!activeAttendanceId) return;
+  const btn = document.getElementById('attendToggleBtn');
+  btn.disabled = true;
+  const now = new Date();
+  const hm = pad(now.getHours())+':'+pad(now.getMinutes());
+  const recordId = activeAttendanceId;
+  try{
+    await updateDoc(doc(attendanceCol(), recordId), {
+      status: 'done', clockOut: hm, clockOutAt: now.getTime()
+    });
+    const workedMin = Math.max(0, Math.round((now.getTime() - activeAttendanceStartAt)/60000));
+    showToast(`退勤しました（勤務時間 ${minutesToHM(workedMin)}）`);
+    getCurrentGpsAsync().then(gps=>{
+      if(gps) updateDoc(doc(attendanceCol(), recordId), {gpsOut: gps}).catch(()=>{});
+    });
+    clearActiveAttendanceLocal();
+    activeAttendanceId = null;
+    activeAttendanceStartAt = null;
+    exitAttendanceInProgressUI();
+  }catch(e){
+    console.error(e);
+    showToast('退勤の記録に失敗しました');
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+async function resumeActiveAttendanceIfAny(){
+  const local = loadActiveAttendanceLocal();
+  if(local && local.id){
+    try{
+      const snap = await getDoc(doc(attendanceCol(), local.id));
+      if(snap.exists() && snap.data().status === 'in'){
+        activeAttendanceId = local.id;
+        activeAttendanceStartAt = local.startAt;
+        enterAttendanceInProgressUI();
+        return;
+      }
+    }catch(e){ console.error(e); }
+    clearActiveAttendanceLocal();
+  }
+  try{
+    const q = query(attendanceCol(), where('workerName','==',workerName), where('status','==','in'), limit(1));
+    const snap = await getDocs(q);
+    if(!snap.empty){
+      const d = snap.docs[0];
+      activeAttendanceId = d.id;
+      activeAttendanceStartAt = d.data().clockInAt || Date.now();
+      saveActiveAttendanceLocal({id: d.id, startAt: activeAttendanceStartAt});
+      enterAttendanceInProgressUI();
+    }
+  }catch(e){ console.error('attendance resume query failed', e); }
+}
+
+function enterAttendanceInProgressUI(){
+  const btn = document.getElementById('attendToggleBtn');
+  btn.textContent = '🕐 退勤する';
+  btn.classList.add('active');
+  startAttendTimerDisplay();
+}
+function exitAttendanceInProgressUI(){
+  const btn = document.getElementById('attendToggleBtn');
+  btn.textContent = '🕐 出勤する';
+  btn.classList.remove('active');
+  stopAttendTimerDisplay();
+  document.getElementById('attendStatusDisplay').textContent = '';
+}
+function startAttendTimerDisplay(){
+  updateAttendTimerText();
+  if(attendTimerInterval) clearInterval(attendTimerInterval);
+  attendTimerInterval = setInterval(updateAttendTimerText, 1000);
+}
+function stopAttendTimerDisplay(){
+  if(attendTimerInterval){ clearInterval(attendTimerInterval); attendTimerInterval = null; }
+}
+function updateAttendTimerText(){
+  if(!activeAttendanceStartAt) return;
+  const elapsedSec = Math.floor((Date.now() - activeAttendanceStartAt)/1000);
+  const h = Math.floor(elapsedSec/3600);
+  const m = Math.floor((elapsedSec%3600)/60);
+  const s = elapsedSec%60;
+  const label = h>0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+  document.getElementById('attendStatusDisplay').textContent = `勤務中... 経過 ${label}`;
 }
 
 /* ---------- manual entry (backfill past dates) ---------- */
@@ -1414,6 +1598,7 @@ function bindTabEvents(){
   });
 
   document.getElementById('gpsToggleBtn').addEventListener('click', toggleGpsWork);
+  document.getElementById('attendToggleBtn').addEventListener('click', toggleAttendance);
 
   document.getElementById('manageFieldsBtn').addEventListener('click', ()=>{
     document.getElementById('fieldManager').classList.toggle('open');
