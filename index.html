@@ -187,10 +187,20 @@ main{padding:16px; max-width:640px; margin:0 auto;}
   0%,100%{ box-shadow:0 0 0 0 rgba(217,142,43,0.35); }
   50%{ box-shadow:0 0 0 8px rgba(217,142,43,0); }
 }
+.btn-break-toggle{background:var(--soil-soft); color:#4A2F17; width:100%; font-size:15px; margin-top:8px;}
+.btn-break-toggle.active{
+  background:var(--soil); color:#fff;
+  animation:pulse-break 1.6s ease-in-out infinite;
+}
+@keyframes pulse-break{
+  0%,100%{ box-shadow:0 0 0 0 rgba(122,82,48,0.35); }
+  50%{ box-shadow:0 0 0 8px rgba(122,82,48,0); }
+}
 .attend-row{display:flex; justify-content:space-between; align-items:center; padding:8px 4px; border-bottom:1px dashed var(--line); font-size:13px;}
 .attend-row:last-child{border-bottom:none;}
 .attend-row .name{font-weight:700;}
 .attend-row .badge-working{background:var(--danger-soft); color:var(--danger); font-size:11px; padding:2px 8px; border-radius:20px; font-weight:700;}
+.attend-row .badge-break{background:var(--soil-soft); color:#4A2F17; font-size:11px; padding:2px 8px; border-radius:20px; font-weight:700;}
 .attend-empty{font-size:12px; color:var(--ink-soft); padding:4px;}
 .btn-photo{background:var(--soil-soft); color:#4A2F17; width:100%;}
 .btn-photo.has-photo{background:var(--soil); color:#fff;}
@@ -356,6 +366,7 @@ main{padding:16px; max-width:640px; margin:0 auto;}
       <h2>🕐 出退勤</h2>
       <button class="btn btn-attend-toggle" id="attendToggleBtn" type="button">🕐 出勤する</button>
       <div class="work-status" id="attendStatusDisplay"></div>
+      <button class="btn btn-break-toggle" id="breakToggleBtn" type="button" style="display:none;">☕ 休憩する</button>
       <div id="attendanceList" style="margin-top:10px;"></div>
     </div>
 
@@ -505,7 +516,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/fireba
 import {
   initializeFirestore, persistentLocalCache, persistentSingleTabManager,
   collection, doc, addDoc, updateDoc, getDoc, deleteDoc, setDoc, onSnapshot,
-  query, where, orderBy, limit, getDocs, arrayUnion, arrayRemove
+  query, where, orderBy, limit, getDocs, arrayUnion, arrayRemove, increment
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
 import {
   getAuth, GoogleAuthProvider, signInWithPopup,
@@ -554,6 +565,10 @@ let unsubAttendance = null;
 let activeAttendanceId = null;
 let activeAttendanceStartAt = null;
 let attendTimerInterval = null;
+let onBreak = false;
+let breakStartAt = null;
+let breakStartHM = null;
+let breakTimerInterval = null;
 
 function pad(n){ return String(n).padStart(2,'0'); }
 function todayStr(){
@@ -1087,6 +1102,23 @@ function updateTimerText(){
 }
 
 /* ---------- attendance (clock-in / clock-out) ---------- */
+function attendanceRowHtml(r){
+  const working = r.status === 'in';
+  const range = working ? `${r.clockIn||'--:--'} 〜` : `${r.clockIn||'--:--'} 〜 ${r.clockOut||'--:--'}`;
+  const totalBreakMin = r.totalBreakMin || 0;
+  const durText = (!working && r.clockInAt && r.clockOutAt)
+    ? (()=>{
+        const grossMin = Math.round((r.clockOutAt - r.clockInAt)/60000);
+        const netMin = Math.max(0, grossMin - totalBreakMin);
+        return totalBreakMin > 0
+          ? `（勤務${minutesToHM(netMin)}／休憩${minutesToHM(totalBreakMin)}）`
+          : `（${minutesToHM(grossMin)}）`;
+      })()
+    : (totalBreakMin > 0 ? `（休憩計${minutesToHM(totalBreakMin)}）` : '');
+  const badge = working ? (r.onBreak ? `<span class="badge-break">☕ 休憩中</span>` : `<span class="badge-working">勤務中</span>`) : '';
+  return `<div class="attend-row"><span class="name">👤 ${escapeHtml(r.workerName||'')}</span><span class="num">${range}${durText} ${badge}</span></div>`;
+}
+
 function subscribeAttendanceToday(){
   if(unsubAttendance) unsubAttendance();
   const q = query(attendanceCol(), where('date','==',todayStr()));
@@ -1098,14 +1130,7 @@ function subscribeAttendanceToday(){
       el.innerHTML = `<div class="attend-empty">本日はまだ誰も出勤していません。</div>`;
       return;
     }
-    el.innerHTML = records.map(r=>{
-      const working = r.status === 'in';
-      const range = working ? `${r.clockIn||'--:--'} 〜` : `${r.clockIn||'--:--'} 〜 ${r.clockOut||'--:--'}`;
-      const durText = (!working && r.clockInAt && r.clockOutAt)
-        ? `（${minutesToHM(Math.round((r.clockOutAt - r.clockInAt)/60000))}）` : '';
-      const badge = working ? `<span class="badge-working">勤務中</span>` : '';
-      return `<div class="attend-row"><span class="name">👤 ${escapeHtml(r.workerName||'')}</span><span class="num">${range}${durText} ${badge}</span></div>`;
-    }).join('');
+    el.innerHTML = records.map(attendanceRowHtml).join('');
   }, (err)=>console.error('attendance sync error', err));
 }
 
@@ -1125,12 +1150,15 @@ async function clockIn(){
     clockIn: hm, clockInAt: now.getTime(),
     clockOut: null, clockOutAt: null,
     gpsIn: null, gpsOut: null,
-    status: 'in'
+    status: 'in',
+    onBreak: false, breakStart: null, breakStartAt: null,
+    totalBreakMin: 0, breaks: []
   };
   try{
     const ref = await addDoc(attendanceCol(), record);
     activeAttendanceId = ref.id;
     activeAttendanceStartAt = now.getTime();
+    onBreak = false; breakStartAt = null; breakStartHM = null;
     saveActiveAttendanceLocal({id: ref.id, startAt: activeAttendanceStartAt});
     enterAttendanceInProgressUI();
     showToast('出勤しました');
@@ -1149,6 +1177,7 @@ async function clockOut(){
   if(!activeAttendanceId) return;
   const btn = document.getElementById('attendToggleBtn');
   btn.disabled = true;
+  if(onBreak) await endBreak(); // don't leave a break dangling
   const now = new Date();
   const hm = pad(now.getHours())+':'+pad(now.getMinutes());
   const recordId = activeAttendanceId;
@@ -1173,15 +1202,77 @@ async function clockOut(){
   }
 }
 
+/* ---------- break tracking ---------- */
+async function toggleBreak(){
+  if(!activeAttendanceId) return;
+  if(onBreak) await endBreak();
+  else await startBreak();
+}
+
+async function startBreak(){
+  if(!activeAttendanceId) return;
+  const btn = document.getElementById('breakToggleBtn');
+  btn.disabled = true;
+  const now = new Date();
+  breakStartHM = pad(now.getHours())+':'+pad(now.getMinutes());
+  breakStartAt = now.getTime();
+  try{
+    await updateDoc(doc(attendanceCol(), activeAttendanceId), {
+      onBreak: true, breakStart: breakStartHM, breakStartAt: breakStartAt
+    });
+    onBreak = true;
+    enterBreakUI();
+    showToast('休憩を開始しました');
+  }catch(e){
+    console.error(e);
+    showToast('休憩の記録に失敗しました');
+    breakStartAt = null; breakStartHM = null;
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+async function endBreak(){
+  if(!activeAttendanceId || !breakStartAt) return;
+  const btn = document.getElementById('breakToggleBtn');
+  btn.disabled = true;
+  const now = new Date();
+  const hm = pad(now.getHours())+':'+pad(now.getMinutes());
+  const durationMin = Math.max(0, Math.round((now.getTime() - breakStartAt)/60000));
+  try{
+    await updateDoc(doc(attendanceCol(), activeAttendanceId), {
+      onBreak: false, breakStart: null, breakStartAt: null,
+      totalBreakMin: increment(durationMin),
+      breaks: arrayUnion({start: breakStartHM, end: hm, durationMin})
+    });
+    onBreak = false;
+    breakStartAt = null; breakStartHM = null;
+    exitBreakUI();
+    showToast(`休憩を終了しました（${minutesToHM(durationMin)}）`);
+  }catch(e){
+    console.error(e);
+    showToast('休憩終了の記録に失敗しました');
+  }finally{
+    btn.disabled = false;
+  }
+}
+
 async function resumeActiveAttendanceIfAny(){
   const local = loadActiveAttendanceLocal();
   if(local && local.id){
     try{
       const snap = await getDoc(doc(attendanceCol(), local.id));
       if(snap.exists() && snap.data().status === 'in'){
+        const data = snap.data();
         activeAttendanceId = local.id;
         activeAttendanceStartAt = local.startAt;
         enterAttendanceInProgressUI();
+        if(data.onBreak && data.breakStartAt){
+          onBreak = true;
+          breakStartAt = data.breakStartAt;
+          breakStartHM = data.breakStart;
+          enterBreakUI();
+        }
         return;
       }
     }catch(e){ console.error(e); }
@@ -1192,10 +1283,17 @@ async function resumeActiveAttendanceIfAny(){
     const snap = await getDocs(q);
     if(!snap.empty){
       const d = snap.docs[0];
+      const data = d.data();
       activeAttendanceId = d.id;
-      activeAttendanceStartAt = d.data().clockInAt || Date.now();
+      activeAttendanceStartAt = data.clockInAt || Date.now();
       saveActiveAttendanceLocal({id: d.id, startAt: activeAttendanceStartAt});
       enterAttendanceInProgressUI();
+      if(data.onBreak && data.breakStartAt){
+        onBreak = true;
+        breakStartAt = data.breakStartAt;
+        breakStartHM = data.breakStart;
+        enterBreakUI();
+      }
     }
   }catch(e){ console.error('attendance resume query failed', e); }
 }
@@ -1204,13 +1302,16 @@ function enterAttendanceInProgressUI(){
   const btn = document.getElementById('attendToggleBtn');
   btn.textContent = '🕐 退勤する';
   btn.classList.add('active');
+  document.getElementById('breakToggleBtn').style.display = 'flex';
   startAttendTimerDisplay();
 }
 function exitAttendanceInProgressUI(){
   const btn = document.getElementById('attendToggleBtn');
   btn.textContent = '🕐 出勤する';
   btn.classList.remove('active');
+  document.getElementById('breakToggleBtn').style.display = 'none';
   stopAttendTimerDisplay();
+  stopBreakTimerDisplay();
   document.getElementById('attendStatusDisplay').textContent = '';
 }
 function startAttendTimerDisplay(){
@@ -1222,13 +1323,45 @@ function stopAttendTimerDisplay(){
   if(attendTimerInterval){ clearInterval(attendTimerInterval); attendTimerInterval = null; }
 }
 function updateAttendTimerText(){
-  if(!activeAttendanceStartAt) return;
+  if(!activeAttendanceStartAt || onBreak) return;
   const elapsedSec = Math.floor((Date.now() - activeAttendanceStartAt)/1000);
   const h = Math.floor(elapsedSec/3600);
   const m = Math.floor((elapsedSec%3600)/60);
   const s = elapsedSec%60;
   const label = h>0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
   document.getElementById('attendStatusDisplay').textContent = `勤務中... 経過 ${label}`;
+}
+
+function enterBreakUI(){
+  const btn = document.getElementById('breakToggleBtn');
+  btn.textContent = '☕ 休憩終了する';
+  btn.classList.add('active');
+  stopAttendTimerDisplay();
+  startBreakTimerDisplay();
+}
+function exitBreakUI(){
+  const btn = document.getElementById('breakToggleBtn');
+  btn.textContent = '☕ 休憩する';
+  btn.classList.remove('active');
+  stopBreakTimerDisplay();
+  startAttendTimerDisplay();
+}
+function startBreakTimerDisplay(){
+  updateBreakTimerText();
+  if(breakTimerInterval) clearInterval(breakTimerInterval);
+  breakTimerInterval = setInterval(updateBreakTimerText, 1000);
+}
+function stopBreakTimerDisplay(){
+  if(breakTimerInterval){ clearInterval(breakTimerInterval); breakTimerInterval = null; }
+}
+function updateBreakTimerText(){
+  if(!breakStartAt) return;
+  const elapsedSec = Math.floor((Date.now() - breakStartAt)/1000);
+  const h = Math.floor(elapsedSec/3600);
+  const m = Math.floor((elapsedSec%3600)/60);
+  const s = elapsedSec%60;
+  const label = h>0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+  document.getElementById('attendStatusDisplay').textContent = `☕ 休憩中... 経過 ${label}`;
 }
 
 /* ---------- manual entry (backfill past dates) ---------- */
@@ -1324,13 +1457,7 @@ function subscribeReportAttendance(date){
     if(records.length===0){
       el.innerHTML = `<div class="attend-empty">この日の出退勤記録はありません。</div>`;
     } else {
-      el.innerHTML = records.map(r=>{
-        const working = r.status === 'in';
-        const range = working ? `${r.clockIn||'--:--'} 〜（勤務中）` : `${r.clockIn||'--:--'} 〜 ${r.clockOut||'--:--'}`;
-        const durText = (!working && r.clockInAt && r.clockOutAt)
-          ? `（${minutesToHM(Math.round((r.clockOutAt - r.clockInAt)/60000))}）` : '';
-        return `<div class="attend-row"><span class="name">👤 ${escapeHtml(r.workerName||'')}</span><span class="num">${range}${durText}</span></div>`;
-      }).join('');
+      el.innerHTML = records.map(attendanceRowHtml).join('');
     }
     window._reportAttendanceCache = { date, records };
   }, (err)=>console.error('report attendance sync error', err));
@@ -1498,16 +1625,21 @@ async function exportToSheet(){
 }
 
 function buildAttendanceSheetRows(c){
-  return c.records.map(r=>[
-    c.date,
-    r.workerName || '',
-    r.clockIn || '',
-    r.status === 'in' ? '(勤務中)' : (r.clockOut || ''),
-    (!r.status || r.status !== 'in') && r.clockInAt && r.clockOutAt
-      ? minutesToHM(Math.round((r.clockOutAt - r.clockInAt)/60000)) : '',
-    (r.gpsIn && r.gpsIn.mapUrl) || '',
-    (r.gpsOut && r.gpsOut.mapUrl) || ''
-  ]);
+  return c.records.map(r=>{
+    const totalBreakMin = r.totalBreakMin || 0;
+    const grossMin = (r.clockInAt && r.clockOutAt) ? Math.round((r.clockOutAt - r.clockInAt)/60000) : null;
+    const netMin = grossMin != null ? Math.max(0, grossMin - totalBreakMin) : null;
+    return [
+      c.date,
+      r.workerName || '',
+      r.clockIn || '',
+      r.status === 'in' ? '(勤務中)' : (r.clockOut || ''),
+      netMin != null ? minutesToHM(netMin) : '',
+      totalBreakMin > 0 ? minutesToHM(totalBreakMin) : '',
+      (r.gpsIn && r.gpsIn.mapUrl) || '',
+      (r.gpsOut && r.gpsOut.mapUrl) || ''
+    ];
+  });
 }
 
 async function exportAttendanceToSheet(){
@@ -1707,6 +1839,7 @@ function bindTabEvents(){
 
   document.getElementById('gpsToggleBtn').addEventListener('click', toggleGpsWork);
   document.getElementById('attendToggleBtn').addEventListener('click', toggleAttendance);
+  document.getElementById('breakToggleBtn').addEventListener('click', toggleBreak);
 
   document.getElementById('manageFieldsBtn').addEventListener('click', ()=>{
     document.getElementById('fieldManager').classList.toggle('open');
