@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hatanote-v5';
+const CACHE_NAME = 'hatanote-v6';
 const FIREBASE_VERSION = '12.15.0';
 const APP_SHELL = [
   './',

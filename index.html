@@ -880,6 +880,9 @@ function subscribeToday(){
     wrap.querySelectorAll('[data-edit]').forEach(btn=>{
       btn.addEventListener('click', ()=> editEntryTime(btn.dataset.edit, btn.dataset.start, btn.dataset.end));
     });
+    wrap.querySelectorAll('[data-note-edit]').forEach(btn=>{
+      btn.addEventListener('click', ()=> editEntryNote(btn.dataset.noteEdit, btn.dataset.note));
+    });
   }, (err)=>console.error('today sync error', err));
 }
 
@@ -897,6 +900,7 @@ function entryHtml(e, opts={}){
   const actions = showActions ? `
       <div class="entry-actions">
         <button class="edit" data-edit="${e.id}" data-start="${e.start||''}" data-end="${e.end||''}">時刻を修正</button>
+        <button class="edit" data-note-edit="${e.id}" data-note="${escapeHtml(e.note||'')}">メモを編集</button>
         <button class="del" data-del="${e.id}">削除</button>
       </div>` : '';
   return `
@@ -933,6 +937,18 @@ async function editEntryTime(entryId, currentStart, currentEnd){
   }catch(e){
     console.error(e);
     showToast('修正に失敗しました');
+  }
+}
+
+async function editEntryNote(entryId, currentNote){
+  const newNote = prompt('メモを編集してください', currentNote || '');
+  if(newNote === null) return;
+  try{
+    await updateDoc(doc(entriesCol(), entryId), { note: newNote.trim() });
+    showToast('メモを更新しました');
+  }catch(e){
+    console.error(e);
+    showToast('メモの更新に失敗しました');
   }
 }
 
