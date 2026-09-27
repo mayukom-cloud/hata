@@ -153,6 +153,37 @@ main{padding:16px; max-width:640px; margin:0 auto;}
 .field-manager-add{display:flex; gap:8px; margin-top:8px;}
 .field-manager-add input{flex:1; padding:9px 10px; border:1.5px solid var(--line); border-radius:8px; background:#fff;}
 .field-manager-add .btn{padding:9px 14px; min-height:auto;}
+
+.chip-list{display:flex; flex-wrap:wrap; gap:8px;}
+.chip-check{
+  display:inline-flex; align-items:center; gap:6px;
+  background:#F5F3EA; border:1.5px solid var(--line); border-radius:20px;
+  padding:7px 12px; font-size:13px; cursor:pointer;
+}
+.chip-check input{width:15px; height:15px; margin:0;}
+.chip-check:has(input:checked){background:var(--primary); border-color:var(--primary); color:#fff;}
+
+.radio-list{display:flex; flex-direction:column; gap:8px;}
+.radio-list label{display:flex; align-items:center; gap:8px; font-size:14px;}
+.radio-list input{width:16px; height:16px; margin:0;}
+
+.material-row{
+  display:grid; grid-template-columns:1fr 1fr 70px 56px 28px; gap:6px;
+  margin-bottom:8px; align-items:center;
+}
+.material-row select, .material-row input{
+  padding:8px 6px; border:1.5px solid var(--line); border-radius:8px; background:#FCFBF7; font-size:13px; width:100%;
+}
+.material-row .mat-remove{
+  background:none; border:none; color:var(--danger); font-size:16px; cursor:pointer; padding:0;
+}
+.material-cat-block{
+  background:#fff; border:1px solid var(--line); border-radius:10px; padding:10px; margin-bottom:10px;
+}
+.material-cat-header{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;}
+.material-cat-header b{font-size:14px; color:var(--primary-dark);}
+.material-cat-header button{background:none; border:none; color:var(--danger); font-size:11px; cursor:pointer;}
+.field-manager .field-manager-add input{margin-bottom:0;}
 .two-col{display:flex; gap:10px;}
 .two-col > .field{flex:1;}
 .duration-hint{font-size:12px; color:var(--ink-soft); margin-top:4px;}
@@ -381,6 +412,43 @@ main{padding:16px; max-width:640px; margin:0 auto;}
         <input type="text" id="inpTaskOther" placeholder="作業内容を入力" style="margin-top:8px; display:none;">
       </div>
 
+      <div class="field">
+        <label>使用機械（複数選択可）</label>
+        <div id="machineChecklist" class="chip-list"></div>
+        <button type="button" class="link-btn" id="manageMachinesBtn">＋ 機械を管理する</button>
+        <div class="field-manager" id="machineManager">
+          <div id="machineManagerList"></div>
+          <div class="field-manager-add">
+            <input type="text" id="newMachineInput" placeholder="例）KUBOTA_XXXX">
+            <button type="button" class="btn btn-outline" id="addMachineBtn">追加</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="field" id="cleaningSection" style="display:none;">
+        <label>機械の洗浄方法</label>
+        <div class="radio-list">
+          <label><input type="radio" name="cleaningMethod" value="農業用水にて洗浄"> 農業用水にて洗浄</label>
+          <label><input type="radio" name="cleaningMethod" value="現地にて土落とし"> 現地にて土落とし</label>
+          <label><input type="radio" name="cleaningMethod" value="その他"> その他（自由記述）</label>
+        </div>
+        <input type="text" id="cleaningOtherInput" placeholder="洗浄方法を入力" style="margin-top:8px; display:none;">
+      </div>
+
+      <div class="field">
+        <label>使用資材</label>
+        <div id="materialRows"></div>
+        <button type="button" class="btn btn-outline btn-block" id="addMaterialRowBtn">＋ 資材を追加</button>
+        <button type="button" class="link-btn" id="manageMaterialsBtn">＋ 資材を管理する</button>
+        <div class="field-manager" id="materialManager">
+          <div id="materialManagerList"></div>
+          <div class="field-manager-add">
+            <input type="text" id="newCategoryInput" placeholder="新しい分類名（例：農薬）">
+            <button type="button" class="btn btn-outline" id="addCategoryBtn">分類を追加</button>
+          </div>
+        </div>
+      </div>
+
       <div class="field" id="liveTimeSection">
         <label>作業時間（GPSで自動記録）</label>
         <button class="btn btn-gps-toggle" id="gpsToggleBtn" type="button">📍 GPSで作業開始</button>
@@ -504,6 +572,41 @@ const TASK_ICONS = {
   "剪定・誘引":"🌳","資材管理・点検":"🔧","片付":"🧹","その他（自由入力）":"📌"
 };
 
+const MACHINE_SEED = [
+  "KUBOTA_KT235","ATEX_MX1000A","KOSHIN_EX-20PDX",
+  "KUBOTA_1050A_ハッスルロータリー平高畝","自走式動噴"
+];
+
+const MATERIAL_SEED = [
+  { name:"マルチ", items:[
+    { name:"オークラ黒マルチ_0.03x135x200m", unit:"m" },
+    { name:"こかげマルチ_0.03x135x200m(エドビ仕入)", unit:"m" }
+  ]},
+  { name:"種_レタス", items:[
+    { name:"KRVキレべ", unit:"袋" },
+    { name:"PURプルナイ", unit:"袋" }
+  ]},
+  { name:"種_白菜", items:[
+    { name:"お黄にいり", unit:"袋" }
+  ]},
+  { name:"種_緑肥", items:[] },
+  { name:"種_軟弱葉物", items:[
+    { name:"千筋水菜", unit:"袋" }
+  ]},
+  { name:"種_根菜", items:[
+    { name:"三太郎", unit:"袋" }
+  ]},
+  { name:"農薬", items:[
+    { name:"ゼンターリ水和剤", unit:"g" },
+    { name:"ボタニガードes", unit:"ml" },
+    { name:"スピノエース顆粒水和剤", unit:"g" }
+  ]},
+  { name:"培土", items:[
+    { name:"阪中緑化ゆうきくん", unit:"L" },
+    { name:"わかばオーガニック培土", unit:"L" }
+  ]}
+];
+
 let app, db, auth;
 let googleProvider;
 let currentUser = null;
@@ -517,6 +620,10 @@ let unsubToday = null;
 let unsubReport = null;
 let unsubFields = null;
 let unsubSettings = null;
+let unsubMachines = null;
+let unsubMaterials = null;
+let machinesList = [];
+let materialCategories = [];
 let activeEntryId = null;
 let activeEntryStartAt = null;
 let timerInterval = null;
@@ -577,6 +684,8 @@ function clearActiveEntryLocal(){
 function entriesCol(){ return collection(db, 'farms', farmCode, 'entries'); }
 function metaFieldsRef(){ return doc(db, 'farms', farmCode, 'meta', 'fields'); }
 function metaSettingsRef(){ return doc(db, 'farms', farmCode, 'meta', 'settings'); }
+function metaMachinesRef(){ return doc(db, 'farms', farmCode, 'meta', 'machines'); }
+function metaMaterialsRef(){ return doc(db, 'farms', farmCode, 'meta', 'materials'); }
 
 /* ---------- image compression ---------- */
 function compressImage(file){
@@ -699,6 +808,8 @@ async function startApp(){
   setSyncStatus();
 
   subscribeFields();
+  subscribeMachines();
+  subscribeMaterials();
   subscribeSettings();
   subscribeToday();
   await resumeActiveEntryIfAny();
@@ -754,6 +865,208 @@ async function addField(name){
   if(!name) return;
   try{ await setDoc(metaFieldsRef(), {list: arrayUnion(name)}, {merge:true}); }
   catch(e){ console.error(e); showToast('追加に失敗しました（電波を確認してください）'); }
+}
+
+/* ---------- shared machine list ---------- */
+function subscribeMachines(){
+  if(unsubMachines) unsubMachines();
+  unsubMachines = onSnapshot(metaMachinesRef(), async (snap)=>{
+    if(!snap.exists()){
+      try{ await setDoc(metaMachinesRef(), {list: MACHINE_SEED}); }catch(e){ console.error(e); }
+      return; // onSnapshot fires again once the seed write lands
+    }
+    machinesList = snap.data().list || [];
+    renderMachineUI();
+  }, (err)=>console.error('machines sync error', err));
+}
+function getSelectedMachines(){
+  return Array.from(document.querySelectorAll('.machine-check:checked')).map(cb=>cb.value);
+}
+function updateCleaningVisibility(){
+  document.getElementById('cleaningSection').style.display = getSelectedMachines().length>0 ? 'block' : 'none';
+}
+function renderMachineUI(){
+  const checkedSet = new Set(getSelectedMachines());
+  const container = document.getElementById('machineChecklist');
+  container.innerHTML = machinesList.map(m=>`
+    <label class="chip-check">
+      <input type="checkbox" class="machine-check" value="${escapeHtml(m)}" ${checkedSet.has(m)?'checked':''}>
+      <span>${escapeHtml(m)}</span>
+    </label>`).join('');
+  container.querySelectorAll('.machine-check').forEach(cb=>{
+    cb.addEventListener('change', updateCleaningVisibility);
+  });
+  updateCleaningVisibility();
+
+  const mgrList = document.getElementById('machineManagerList');
+  if(machinesList.length===0){
+    mgrList.innerHTML = `<div class="field-manager-empty">登録された機械がありません。下から追加してください。</div>`;
+  } else {
+    mgrList.innerHTML = machinesList.map(m=>`
+      <div class="field-manager-row">
+        <span>${escapeHtml(m)}</span>
+        <button type="button" data-remove-machine="${escapeHtml(m)}">削除</button>
+      </div>`).join('');
+    mgrList.querySelectorAll('[data-remove-machine]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const name = btn.dataset.removeMachine;
+        if(!confirm(`「${name}」を機械一覧から削除しますか？\n（過去の記録は残ります）`)) return;
+        try{ await setDoc(metaMachinesRef(), {list: arrayRemove(name)}, {merge:true}); }catch(e){ console.error(e); }
+        showToast('削除しました');
+      });
+    });
+  }
+}
+async function addMachine(name){
+  name = (name||'').trim();
+  if(!name) return;
+  try{ await setDoc(metaMachinesRef(), {list: arrayUnion(name)}, {merge:true}); }
+  catch(e){ console.error(e); showToast('追加に失敗しました（電波を確認してください）'); }
+}
+
+/* ---------- shared hierarchical material list ---------- */
+function subscribeMaterials(){
+  if(unsubMaterials) unsubMaterials();
+  unsubMaterials = onSnapshot(metaMaterialsRef(), async (snap)=>{
+    if(!snap.exists()){
+      try{ await setDoc(metaMaterialsRef(), {categories: MATERIAL_SEED}); }catch(e){ console.error(e); }
+      return;
+    }
+    materialCategories = snap.data().categories || [];
+    renderMaterialUI();
+  }, (err)=>console.error('materials sync error', err));
+}
+function populateCategorySelect(sel){
+  const prev = sel.value;
+  sel.innerHTML = `<option value="">分類を選択</option>` +
+    materialCategories.map(c=>`<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join('');
+  if(materialCategories.some(c=>c.name===prev)) sel.value = prev;
+}
+function populateMaterialSelect(sel, categoryName, keepValue){
+  const prev = keepValue!=null ? keepValue : sel.value;
+  const cat = materialCategories.find(c=>c.name===categoryName);
+  const items = cat ? (cat.items||[]) : [];
+  sel.innerHTML = `<option value="">資材を選択</option>` +
+    items.map(it=>`<option value="${escapeHtml(it.name)}" data-unit="${escapeHtml(it.unit||'')}">${escapeHtml(it.name)}</option>`).join('');
+  if(items.some(it=>it.name===prev)) sel.value = prev;
+}
+function materialRowHtml(rowId){
+  return `
+  <div class="material-row" data-row-id="${rowId}">
+    <select class="mat-category"></select>
+    <select class="mat-name"></select>
+    <input type="number" class="mat-amount" placeholder="使用量" step="any" inputmode="decimal">
+    <input type="text" class="mat-unit" placeholder="単位">
+    <button type="button" class="mat-remove" title="削除">✕</button>
+  </div>`;
+}
+function wireMaterialRow(rowEl){
+  const catSel = rowEl.querySelector('.mat-category');
+  const nameSel = rowEl.querySelector('.mat-name');
+  const unitInput = rowEl.querySelector('.mat-unit');
+  populateCategorySelect(catSel);
+  populateMaterialSelect(nameSel, catSel.value);
+  catSel.addEventListener('change', ()=> populateMaterialSelect(nameSel, catSel.value, ''));
+  nameSel.addEventListener('change', ()=>{
+    const opt = nameSel.selectedOptions[0];
+    const unit = opt ? opt.dataset.unit : '';
+    if(unit) unitInput.value = unit;
+  });
+  rowEl.querySelector('.mat-remove').addEventListener('click', ()=> rowEl.remove());
+}
+function addMaterialRow(){
+  const rowId = 'mr'+Date.now()+Math.random().toString(36).slice(2,6);
+  const wrap = document.getElementById('materialRows');
+  wrap.insertAdjacentHTML('beforeend', materialRowHtml(rowId));
+  wireMaterialRow(wrap.querySelector(`[data-row-id="${rowId}"]`));
+}
+function getMaterialsUsage(){
+  return Array.from(document.querySelectorAll('.material-row')).map(rowEl=>({
+    category: rowEl.querySelector('.mat-category').value,
+    name: rowEl.querySelector('.mat-name').value,
+    amount: rowEl.querySelector('.mat-amount').value ? parseFloat(rowEl.querySelector('.mat-amount').value) : null,
+    unit: rowEl.querySelector('.mat-unit').value.trim()
+  })).filter(m=>m.name);
+}
+function clearMaterialRows(){
+  document.getElementById('materialRows').innerHTML = '';
+}
+function renderMaterialUI(){
+  document.querySelectorAll('.material-row').forEach(rowEl=>{
+    const catSel = rowEl.querySelector('.mat-category');
+    const nameSel = rowEl.querySelector('.mat-name');
+    const prevCat = catSel.value, prevName = nameSel.value;
+    populateCategorySelect(catSel);
+    populateMaterialSelect(nameSel, catSel.value || prevCat, prevName);
+  });
+  renderMaterialManager();
+}
+function renderMaterialManager(){
+  const el = document.getElementById('materialManagerList');
+  if(materialCategories.length===0){
+    el.innerHTML = `<div class="field-manager-empty">登録された資材分類がありません。下から追加してください。</div>`;
+    return;
+  }
+  el.innerHTML = materialCategories.map(cat=>`
+    <div class="material-cat-block">
+      <div class="material-cat-header">
+        <b>${escapeHtml(cat.name)}</b>
+        <button type="button" data-remove-cat="${escapeHtml(cat.name)}">分類を削除</button>
+      </div>
+      ${(cat.items||[]).map(it=>`
+        <div class="field-manager-row">
+          <span>${escapeHtml(it.name)}${it.unit ? '（単位: '+escapeHtml(it.unit)+'）' : ''}</span>
+          <button type="button" data-remove-item-cat="${escapeHtml(cat.name)}" data-remove-item-name="${escapeHtml(it.name)}">削除</button>
+        </div>`).join('') || `<div class="field-manager-empty">まだ資材がありません。</div>`}
+      <div class="field-manager-add">
+        <input type="text" class="new-item-name" data-cat="${escapeHtml(cat.name)}" placeholder="資材名">
+        <input type="text" class="new-item-unit" data-cat="${escapeHtml(cat.name)}" placeholder="単位" style="max-width:70px;">
+        <button type="button" class="btn btn-outline" data-add-item="${escapeHtml(cat.name)}">追加</button>
+      </div>
+    </div>`).join('');
+
+  el.querySelectorAll('[data-remove-cat]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const catName = btn.dataset.removeCat;
+      if(!confirm(`「${catName}」分類を削除しますか？（中の資材もすべて削除されます。過去の記録は残ります）`)) return;
+      const list = materialCategories.filter(c=>c.name!==catName);
+      try{ await setDoc(metaMaterialsRef(), {categories:list}); showToast('削除しました'); }
+      catch(e){ console.error(e); showToast('削除に失敗しました'); }
+    });
+  });
+  el.querySelectorAll('[data-remove-item-cat]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const catName = btn.dataset.removeItemCat;
+      const itemName = btn.dataset.removeItemName;
+      if(!confirm(`「${itemName}」を削除しますか？`)) return;
+      const list = materialCategories.map(c=> c.name===catName ? {...c, items:(c.items||[]).filter(it=>it.name!==itemName)} : c);
+      try{ await setDoc(metaMaterialsRef(), {categories:list}); showToast('削除しました'); }
+      catch(e){ console.error(e); showToast('削除に失敗しました'); }
+    });
+  });
+  el.querySelectorAll('[data-add-item]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const catName = btn.dataset.addItem;
+      const nameInput = btn.parentElement.querySelector('.new-item-name');
+      const unitInput = btn.parentElement.querySelector('.new-item-unit');
+      const name = nameInput.value.trim();
+      const unit = unitInput.value.trim();
+      if(!name){ nameInput.focus(); return; }
+      const list = materialCategories.map(c=> c.name===catName ? {...c, items:[...(c.items||[]), {name, unit}]} : c);
+      try{
+        await setDoc(metaMaterialsRef(), {categories:list});
+        showToast('資材を追加しました');
+      }catch(e){ console.error(e); showToast('追加に失敗しました'); }
+    });
+  });
+}
+async function addMaterialCategory(name){
+  name = (name||'').trim();
+  if(!name) return;
+  if(materialCategories.some(c=>c.name===name)){ showToast('同じ名前の分類があります'); return; }
+  const list = [...materialCategories, {name, items:[]}];
+  try{ await setDoc(metaMaterialsRef(), {categories:list}); showToast('分類を追加しました'); }
+  catch(e){ console.error(e); showToast('追加に失敗しました'); }
 }
 
 /* ---------- shared settings (farm display name, spreadsheet target) ---------- */
@@ -830,6 +1143,11 @@ function entryHtml(e, opts={}){
   const pendingBadge = e._pending ? `<span class="badge badge-pending">⏳ 送信待ち</span>` : '';
   const progressBadge = inProgress ? `<span class="badge badge-progress">⏱ 作業中</span>` : '';
   const photo = e.photo ? `<img class="entry-thumb" src="${e.photo}">` : '';
+  const machinesLine = (e.machines && e.machines.length) ? `<div class="entry-field">🚜 ${e.machines.map(escapeHtml).join('、')}</div>` : '';
+  const cleaningLine = e.cleaningMethod ? `<div class="entry-field">🧽 洗浄: ${escapeHtml(e.cleaningMethod)}</div>` : '';
+  const materialsLine = (e.materials && e.materials.length)
+    ? `<div class="entry-note">🧪 ${e.materials.map(m=>`${escapeHtml(m.name)} ${m.amount!=null?m.amount:''}${escapeHtml(m.unit||'')}`).join('、')}</div>`
+    : '';
   const actions = showActions ? `
       <div class="entry-actions">
         <button class="edit" data-edit="${e.id}" data-start="${e.start||''}" data-end="${e.end||''}">時刻を修正</button>
@@ -845,7 +1163,10 @@ function entryHtml(e, opts={}){
       </div>
       <div class="entry-task">${icon} ${escapeHtml(e.taskType)}</div>
       ${e.field ? `<div class="entry-field">🏞 ${escapeHtml(e.field)}${e.crop ? ' ／ ' + escapeHtml(e.crop) : ''}</div>` : ''}
+      ${machinesLine}
+      ${cleaningLine}
       ${e.workerName ? `<div class="entry-worker">👤 ${escapeHtml(e.workerName)}</div>` : ''}
+      ${materialsLine}
       ${e.note ? `<div class="entry-note">${escapeHtml(e.note)}</div>` : ''}
       <div class="entry-meta">${progressBadge}${gpsBadge}${photoBadge}${pendingBadge}${photo}</div>
       ${actions}
@@ -895,6 +1216,13 @@ function currentTaskType(){
   return taskType;
 }
 
+function getCleaningMethod(){
+  const checked = document.querySelector('input[name="cleaningMethod"]:checked');
+  if(!checked) return '';
+  if(checked.value === 'その他') return document.getElementById('cleaningOtherInput').value.trim();
+  return checked.value;
+}
+
 /* ---------- GPS start/stop workflow (live, today only) ---------- */
 function getCurrentGpsAsync(){
   return new Promise((resolve)=>{
@@ -928,6 +1256,9 @@ async function startWork(){
     field: document.getElementById('inpField').value.trim(),
     crop: document.getElementById('inpCrop').value.trim(),
     note: document.getElementById('inpNote').value.trim(),
+    machines: getSelectedMachines(),
+    cleaningMethod: getCleaningMethod(),
+    materials: getMaterialsUsage(),
     start: startHM, end: null, durationMin: null,
     status: 'in_progress',
     gpsStart: null, gpsEnd: null,
@@ -969,6 +1300,9 @@ async function stopWork(){
     field: document.getElementById('inpField').value.trim(),
     crop: document.getElementById('inpCrop').value.trim(),
     note: document.getElementById('inpNote').value.trim(),
+    machines: getSelectedMachines(),
+    cleaningMethod: getCleaningMethod(),
+    materials: getMaterialsUsage(),
     photo: currentPhoto
   };
   try{
@@ -1064,6 +1398,9 @@ async function saveManualEntry(){
     durationMin: calcDuration(start, end),
     status: 'done',
     note: document.getElementById('inpNote').value.trim(),
+    machines: getSelectedMachines(),
+    cleaningMethod: getCleaningMethod(),
+    materials: getMaterialsUsage(),
     gpsStart: null, gpsEnd: null,
     photo: currentPhoto,
     workerName,
@@ -1093,6 +1430,12 @@ function resetForm(){
   document.getElementById('inpEnd').value = '';
   document.getElementById('inpTaskOther').value = '';
   document.getElementById('inpTaskOther').style.display = 'none';
+  document.querySelectorAll('.machine-check:checked').forEach(cb=> cb.checked = false);
+  updateCleaningVisibility();
+  document.querySelectorAll('input[name="cleaningMethod"]').forEach(r=> r.checked = false);
+  document.getElementById('cleaningOtherInput').value = '';
+  document.getElementById('cleaningOtherInput').style.display = 'none';
+  clearMaterialRows();
   currentPhoto = null;
   document.getElementById('photoResult').innerHTML = '';
   document.getElementById('photoBtn').classList.remove('has-photo');
@@ -1177,6 +1520,11 @@ function buildReportText(){
     if(e.durationMin!=null) txt += ` [${minutesToHM(e.durationMin)}]`;
     if(e.workerName) txt += ` - ${e.workerName}`;
     txt += `\n`;
+    if(e.machines && e.machines.length) txt += `  使用機械: ${e.machines.join('、')}\n`;
+    if(e.cleaningMethod) txt += `  洗浄方法: ${e.cleaningMethod}\n`;
+    if(e.materials && e.materials.length){
+      txt += `  使用資材: ${e.materials.map(m=>`${m.name} ${m.amount!=null?m.amount:''}${m.unit||''}`).join('、')}\n`;
+    }
     if(e.note) txt += `  メモ: ${e.note}\n`;
     if(e.gps) txt += `  位置: ${e.gps.lat}, ${e.gps.lon}\n`;
   });
@@ -1195,6 +1543,11 @@ function preparePrint(){
     if(e.field) html += ` — ${escapeHtml(e.field)}${e.crop ? '・'+escapeHtml(e.crop) : ''}`;
     if(e.durationMin!=null) html += ` (${minutesToHM(e.durationMin)})`;
     if(e.workerName) html += ` / ${escapeHtml(e.workerName)}`;
+    if(e.machines && e.machines.length) html += `<br>使用機械: ${escapeHtml(e.machines.join('、'))}`;
+    if(e.cleaningMethod) html += `<br>洗浄方法: ${escapeHtml(e.cleaningMethod)}`;
+    if(e.materials && e.materials.length){
+      html += `<br>使用資材: ${escapeHtml(e.materials.map(m=>`${m.name} ${m.amount!=null?m.amount:''}${m.unit||''}`).join('、'))}`;
+    }
     if(e.note) html += `<br>メモ: ${escapeHtml(e.note)}`;
     if(e.gps) html += `<br>位置: ${e.gps.lat}, ${e.gps.lon}`;
     html += `</div>`;
@@ -1222,6 +1575,9 @@ function buildSheetRows(c){
     e.field || '',
     e.crop || '',
     e.taskType || '',
+    (e.machines||[]).join('、'),
+    e.cleaningMethod || '',
+    (e.materials||[]).map(m=>`${m.name} ${m.amount!=null?m.amount:''}${m.unit||''}`).join('、'),
     e.note || '',
     (e.gpsStart && e.gpsStart.mapUrl) || '',
     (e.gpsEnd && e.gpsEnd.mapUrl) || ''
@@ -1448,6 +1804,40 @@ function bindTabEvents(){
   });
   document.getElementById('newFieldInput').addEventListener('keydown', (e)=>{
     if(e.key === 'Enter'){ e.preventDefault(); document.getElementById('addFieldBtn').click(); }
+  });
+
+  document.getElementById('manageMachinesBtn').addEventListener('click', ()=>{
+    document.getElementById('machineManager').classList.toggle('open');
+  });
+  document.getElementById('addMachineBtn').addEventListener('click', async ()=>{
+    const input = document.getElementById('newMachineInput');
+    const name = input.value.trim();
+    if(!name){ input.focus(); return; }
+    await addMachine(name);
+    input.value = '';
+    showToast('機械を追加しました');
+  });
+  document.getElementById('newMachineInput').addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){ e.preventDefault(); document.getElementById('addMachineBtn').click(); }
+  });
+
+  document.querySelectorAll('input[name="cleaningMethod"]').forEach(r=>{
+    r.addEventListener('change', ()=>{
+      document.getElementById('cleaningOtherInput').style.display = r.value==='その他' && r.checked ? 'block' : 'none';
+    });
+  });
+
+  document.getElementById('addMaterialRowBtn').addEventListener('click', addMaterialRow);
+  document.getElementById('manageMaterialsBtn').addEventListener('click', ()=>{
+    document.getElementById('materialManager').classList.toggle('open');
+  });
+  document.getElementById('addCategoryBtn').addEventListener('click', async ()=>{
+    const input = document.getElementById('newCategoryInput');
+    await addMaterialCategory(input.value);
+    input.value = '';
+  });
+  document.getElementById('newCategoryInput').addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){ e.preventDefault(); document.getElementById('addCategoryBtn').click(); }
   });
 
   document.getElementById('photoBtn').addEventListener('click', ()=>{
