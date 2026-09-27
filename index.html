@@ -184,6 +184,16 @@ main{padding:16px; max-width:640px; margin:0 auto;}
 .material-cat-header b{font-size:14px; color:var(--primary-dark);}
 .material-cat-header button{background:none; border:none; color:var(--danger); font-size:11px; cursor:pointer;}
 .field-manager .field-manager-add input{margin-bottom:0;}
+.seedling-row{
+  display:grid; grid-template-columns:1fr 70px 28px; gap:6px;
+  margin-bottom:8px; align-items:center;
+}
+.seedling-row select, .seedling-row input{
+  padding:8px 6px; border:1.5px solid var(--line); border-radius:8px; background:#FCFBF7; font-size:13px; width:100%;
+}
+.seedling-row .seed-remove{
+  background:none; border:none; color:var(--danger); font-size:16px; cursor:pointer; padding:0;
+}
 .two-col{display:flex; gap:10px;}
 .two-col > .field{flex:1;}
 .duration-hint{font-size:12px; color:var(--ink-soft); margin-top:4px;}
@@ -395,6 +405,7 @@ main{padding:16px; max-width:640px; margin:0 auto;}
         <label>作業内容</label>
         <select id="inpTaskType">
           <option value="耕起・整地">耕起・整地</option>
+          <option value="畝立て">畝立て</option>
           <option value="播種・育苗">播種・育苗</option>
           <option value="定植">定植</option>
           <option value="施肥">施肥</option>
@@ -447,6 +458,21 @@ main{padding:16px; max-width:640px; margin:0 auto;}
             <button type="button" class="btn btn-outline" id="addCategoryBtn">分類を追加</button>
           </div>
         </div>
+      </div>
+
+      <div class="field" id="seedlingProduceSection" style="display:none;">
+        <label>育苗数量</label>
+        <div class="two-col">
+          <input type="number" id="seedlingQtyInput" placeholder="数量" step="any" inputmode="decimal">
+          <input type="text" id="seedlingUnitInput" placeholder="単位（例：本・株・トレー）">
+        </div>
+        <div class="hint" style="font-size:11px; color:var(--ink-soft); margin-top:4px;">ここで記録した数量が、後で「定植」の際に苗の選択肢として使えるようになります。</div>
+      </div>
+
+      <div class="field" id="seedlingUseSection" style="display:none;">
+        <label>使用した苗（播種記録から選択）</label>
+        <div id="seedlingRows"></div>
+        <button type="button" class="btn btn-outline btn-block" id="addSeedlingRowBtn">＋ 苗を追加</button>
       </div>
 
       <div class="field" id="liveTimeSection">
@@ -544,7 +570,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/fireba
 import {
   initializeFirestore, persistentLocalCache, persistentSingleTabManager,
   collection, doc, addDoc, updateDoc, getDoc, deleteDoc, setDoc, onSnapshot,
-  query, where, orderBy, limit, getDocs, arrayUnion, arrayRemove
+  query, where, orderBy, limit, getDocs, arrayUnion, arrayRemove, increment
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
 import {
   getAuth, GoogleAuthProvider, signInWithPopup,
@@ -567,7 +593,7 @@ const FIREBASE_CONFIG = {
 };
 
 const TASK_ICONS = {
-  "耕起・整地":"🚜","播種・育苗":"🌱","定植":"🌿","施肥":"💧","防除（農薬散布）":"🧪",
+  "耕起・整地":"🚜","畝立て":"⛰️","播種・育苗":"🌱","定植":"🌿","施肥":"💧","防除（農薬散布）":"🧪",
   "除草":"✂️","灌水":"🚿","収穫":"🧺","選別・調製":"📦","出荷・配送":"🚚",
   "剪定・誘引":"🌳","資材管理・点検":"🔧","片付":"🧹","その他（自由入力）":"📌"
 };
@@ -624,6 +650,7 @@ let unsubMachines = null;
 let unsubMaterials = null;
 let machinesList = [];
 let materialCategories = [];
+let seedlingBatchesCache = [];
 let activeEntryId = null;
 let activeEntryStartAt = null;
 let timerInterval = null;
@@ -805,6 +832,7 @@ async function startApp(){
   document.getElementById('inpStart').value = pad(now.getHours())+':'+pad(now.getMinutes());
   updateHeaderDate();
   updateFormModeForDate();
+  updateSeedlingSectionVisibility();
   setSyncStatus();
 
   subscribeFields();
@@ -1069,6 +1097,88 @@ async function addMaterialCategory(name){
   catch(e){ console.error(e); showToast('追加に失敗しました'); }
 }
 
+/* ---------- seedling batch traceability (播種・育苗 → 定植) ---------- */
+async function loadSeedlingBatches(){
+  try{
+    const q = query(entriesCol(), where('taskType','==','播種・育苗'), limit(300));
+    const snap = await getDocs(q);
+    seedlingBatchesCache = snap.docs
+      .map(d=>({id:d.id, ...d.data()}))
+      .filter(e=> e.seedlingQty!=null && (e.seedlingRemaining==null || e.seedlingRemaining>0))
+      .sort((a,b)=> (b.date||'').localeCompare(a.date||'') || (b.start||'').localeCompare(a.start||''));
+  }catch(e){
+    console.error('seedling batches load failed', e);
+    seedlingBatchesCache = [];
+  }
+}
+function seedlingSourceLabel(e){
+  const remaining = e.seedlingRemaining!=null ? e.seedlingRemaining : e.seedlingQty;
+  const unit = e.seedlingUnit || '';
+  return `${e.date} ${e.field||''}${e.crop?'・'+e.crop:''} — 残り${remaining}${unit}／全${e.seedlingQty}${unit}`;
+}
+function populateSeedlingSelect(sel, keepValue){
+  const prev = keepValue!=null ? keepValue : sel.value;
+  sel.innerHTML = `<option value="">播種記録を選択</option>` +
+    seedlingBatchesCache.map(e=>`<option value="${e.id}" data-unit="${escapeHtml(e.seedlingUnit||'')}" data-label="${escapeHtml(seedlingSourceLabel(e))}">${escapeHtml(seedlingSourceLabel(e))}</option>`).join('');
+  if(seedlingBatchesCache.some(e=>e.id===prev)) sel.value = prev;
+}
+function seedlingRowHtml(rowId){
+  return `
+  <div class="seedling-row" data-row-id="${rowId}">
+    <select class="seed-source"></select>
+    <input type="number" class="seed-qty" placeholder="使用数" step="any" inputmode="decimal">
+    <button type="button" class="seed-remove" title="削除">✕</button>
+  </div>`;
+}
+function wireSeedlingRow(rowEl){
+  populateSeedlingSelect(rowEl.querySelector('.seed-source'));
+  rowEl.querySelector('.seed-remove').addEventListener('click', ()=> rowEl.remove());
+}
+async function addSeedlingRow(){
+  await loadSeedlingBatches();
+  const rowId = 'sr'+Date.now()+Math.random().toString(36).slice(2,6);
+  const wrap = document.getElementById('seedlingRows');
+  wrap.insertAdjacentHTML('beforeend', seedlingRowHtml(rowId));
+  wireSeedlingRow(wrap.querySelector(`[data-row-id="${rowId}"]`));
+}
+function getSeedlingSources(){
+  return Array.from(document.querySelectorAll('.seedling-row')).map(rowEl=>{
+    const sel = rowEl.querySelector('.seed-source');
+    const opt = sel.selectedOptions[0];
+    return {
+      sourceEntryId: sel.value,
+      label: opt ? opt.dataset.label : '',
+      unit: opt ? opt.dataset.unit : '',
+      qty: rowEl.querySelector('.seed-qty').value ? parseFloat(rowEl.querySelector('.seed-qty').value) : null
+    };
+  }).filter(s=> s.sourceEntryId && s.qty>0);
+}
+function clearSeedlingRows(){
+  document.getElementById('seedlingRows').innerHTML = '';
+}
+async function applySeedlingUsage(sources){
+  for(const s of sources){
+    try{ await updateDoc(doc(entriesCol(), s.sourceEntryId), {seedlingRemaining: increment(-s.qty)}); }
+    catch(e){ console.error('seedling remaining update failed', e); }
+  }
+}
+async function restoreSeedlingUsage(sources){
+  for(const s of sources){
+    try{ await updateDoc(doc(entriesCol(), s.sourceEntryId), {seedlingRemaining: increment(s.qty)}); }
+    catch(e){ console.error('seedling remaining restore failed', e); }
+  }
+}
+function updateSeedlingSectionVisibility(){
+  const taskType = document.getElementById('inpTaskType').value;
+  const isSowing = taskType === '播種・育苗';
+  const isPlanting = taskType === '定植';
+  document.getElementById('seedlingProduceSection').style.display = isSowing ? 'block' : 'none';
+  document.getElementById('seedlingUseSection').style.display = isPlanting ? 'block' : 'none';
+  if(isPlanting) loadSeedlingBatches().then(()=>{
+    document.querySelectorAll('.seed-source').forEach(sel=> populateSeedlingSelect(sel));
+  });
+}
+
 /* ---------- shared settings (farm display name, spreadsheet target) ---------- */
 let currentSheetId = '';
 let currentSheetRange = 'Sheet1!A1';
@@ -1119,7 +1229,14 @@ function subscribeToday(){
     wrap.querySelectorAll('[data-del]').forEach(btn=>{
       btn.addEventListener('click', async ()=>{
         if(!confirm('この記録を削除しますか？')) return;
-        try{ await deleteDoc(doc(entriesCol(), btn.dataset.del)); showToast('削除しました'); }
+        try{
+          const target = entries.find(e=>e.id===btn.dataset.del);
+          if(target && target.seedlingSources && target.seedlingSources.length){
+            await restoreSeedlingUsage(target.seedlingSources);
+          }
+          await deleteDoc(doc(entriesCol(), btn.dataset.del));
+          showToast('削除しました');
+        }
         catch(e){ console.error(e); showToast('削除に失敗しました'); }
       });
     });
@@ -1148,6 +1265,12 @@ function entryHtml(e, opts={}){
   const materialsLine = (e.materials && e.materials.length)
     ? `<div class="entry-note">🧪 ${e.materials.map(m=>`${escapeHtml(m.name)} ${m.amount!=null?m.amount:''}${escapeHtml(m.unit||'')}`).join('、')}</div>`
     : '';
+  const seedlingProduceLine = e.seedlingQty!=null
+    ? `<div class="entry-field">🌱 育苗数量: ${e.seedlingQty}${escapeHtml(e.seedlingUnit||'')}（残り${e.seedlingRemaining!=null?e.seedlingRemaining:e.seedlingQty}${escapeHtml(e.seedlingUnit||'')}）</div>`
+    : '';
+  const seedlingUseLine = (e.seedlingSources && e.seedlingSources.length)
+    ? `<div class="entry-note">🌱 苗の由来: ${e.seedlingSources.map(s=>`${escapeHtml(s.label||'')} ${s.qty!=null?s.qty:''}${escapeHtml(s.unit||'')}`).join('、')}</div>`
+    : '';
   const actions = showActions ? `
       <div class="entry-actions">
         <button class="edit" data-edit="${e.id}" data-start="${e.start||''}" data-end="${e.end||''}">時刻を修正</button>
@@ -1165,8 +1288,10 @@ function entryHtml(e, opts={}){
       ${e.field ? `<div class="entry-field">🏞 ${escapeHtml(e.field)}${e.crop ? ' ／ ' + escapeHtml(e.crop) : ''}</div>` : ''}
       ${machinesLine}
       ${cleaningLine}
+      ${seedlingProduceLine}
       ${e.workerName ? `<div class="entry-worker">👤 ${escapeHtml(e.workerName)}</div>` : ''}
       ${materialsLine}
+      ${seedlingUseLine}
       ${e.note ? `<div class="entry-note">${escapeHtml(e.note)}</div>` : ''}
       <div class="entry-meta">${progressBadge}${gpsBadge}${photoBadge}${pendingBadge}${photo}</div>
       ${actions}
@@ -1223,6 +1348,14 @@ function getCleaningMethod(){
   return checked.value;
 }
 
+function getSeedlingProduction(){
+  if(currentTaskType() !== '播種・育苗') return {seedlingQty:null, seedlingUnit:'', seedlingRemaining:null};
+  const qtyVal = document.getElementById('seedlingQtyInput').value;
+  const qty = qtyVal ? parseFloat(qtyVal) : null;
+  const unit = document.getElementById('seedlingUnitInput').value.trim();
+  return {seedlingQty: qty, seedlingUnit: unit, seedlingRemaining: qty};
+}
+
 /* ---------- GPS start/stop workflow (live, today only) ---------- */
 function getCurrentGpsAsync(){
   return new Promise((resolve)=>{
@@ -1250,6 +1383,7 @@ async function startWork(){
   btn.disabled = true;
   const now = new Date();
   const startHM = pad(now.getHours())+':'+pad(now.getMinutes());
+  const seedProd = getSeedlingProduction();
   const entry = {
     date: todayStr(),
     taskType: currentTaskType(),
@@ -1259,6 +1393,10 @@ async function startWork(){
     machines: getSelectedMachines(),
     cleaningMethod: getCleaningMethod(),
     materials: getMaterialsUsage(),
+    seedlingQty: seedProd.seedlingQty,
+    seedlingUnit: seedProd.seedlingUnit,
+    seedlingRemaining: seedProd.seedlingRemaining,
+    seedlingSources: [],
     start: startHM, end: null, durationMin: null,
     status: 'in_progress',
     gpsStart: null, gpsEnd: null,
@@ -1293,6 +1431,8 @@ async function stopWork(){
   const endHM = pad(now.getHours())+':'+pad(now.getMinutes());
   const durationMin = Math.max(0, Math.round((now.getTime() - activeEntryStartAt)/60000));
   const entryId = activeEntryId;
+  const seedProd = getSeedlingProduction();
+  const seedlingSources = getSeedlingSources();
 
   const updates = {
     status: 'done', end: endHM, durationMin,
@@ -1303,11 +1443,16 @@ async function stopWork(){
     machines: getSelectedMachines(),
     cleaningMethod: getCleaningMethod(),
     materials: getMaterialsUsage(),
+    seedlingQty: seedProd.seedlingQty,
+    seedlingUnit: seedProd.seedlingUnit,
+    seedlingRemaining: seedProd.seedlingRemaining,
+    seedlingSources,
     photo: currentPhoto
   };
   try{
     await updateDoc(doc(entriesCol(), entryId), updates);
     showToast(`作業を記録しました（${minutesToHM(durationMin)}）`);
+    if(seedlingSources.length) applySeedlingUsage(seedlingSources);
     getCurrentGpsAsync().then(gps=>{
       if(gps) updateDoc(doc(entriesCol(), entryId), {gpsEnd: gps}).catch(()=>{});
     });
@@ -1389,6 +1534,8 @@ async function saveManualEntry(){
   const date = document.getElementById('inpDate').value || todayStr();
   const start = document.getElementById('inpStart').value;
   const end = document.getElementById('inpEnd').value;
+  const seedProd = getSeedlingProduction();
+  const seedlingSources = getSeedlingSources();
   const entry = {
     date,
     taskType: currentTaskType(),
@@ -1401,6 +1548,10 @@ async function saveManualEntry(){
     machines: getSelectedMachines(),
     cleaningMethod: getCleaningMethod(),
     materials: getMaterialsUsage(),
+    seedlingQty: seedProd.seedlingQty,
+    seedlingUnit: seedProd.seedlingUnit,
+    seedlingRemaining: seedProd.seedlingRemaining,
+    seedlingSources,
     gpsStart: null, gpsEnd: null,
     photo: currentPhoto,
     workerName,
@@ -1412,6 +1563,7 @@ async function saveManualEntry(){
   try{
     await addDoc(entriesCol(), entry);
     showToast(navigator.onLine ? '作業を記録しました' : '端末に保存しました（電波が戻ると自動送信されます）');
+    if(seedlingSources.length) applySeedlingUsage(seedlingSources);
     resetForm();
   }catch(e){
     console.error(e);
@@ -1436,6 +1588,10 @@ function resetForm(){
   document.getElementById('cleaningOtherInput').value = '';
   document.getElementById('cleaningOtherInput').style.display = 'none';
   clearMaterialRows();
+  document.getElementById('seedlingQtyInput').value = '';
+  document.getElementById('seedlingUnitInput').value = '';
+  clearSeedlingRows();
+  updateSeedlingSectionVisibility();
   currentPhoto = null;
   document.getElementById('photoResult').innerHTML = '';
   document.getElementById('photoBtn').classList.remove('has-photo');
@@ -1525,6 +1681,10 @@ function buildReportText(){
     if(e.materials && e.materials.length){
       txt += `  使用資材: ${e.materials.map(m=>`${m.name} ${m.amount!=null?m.amount:''}${m.unit||''}`).join('、')}\n`;
     }
+    if(e.seedlingQty!=null) txt += `  育苗数量: ${e.seedlingQty}${e.seedlingUnit||''}（残り${e.seedlingRemaining!=null?e.seedlingRemaining:e.seedlingQty}${e.seedlingUnit||''}）\n`;
+    if(e.seedlingSources && e.seedlingSources.length){
+      txt += `  苗の由来: ${e.seedlingSources.map(s=>`${s.label||''} ${s.qty!=null?s.qty:''}${s.unit||''}`).join('、')}\n`;
+    }
     if(e.note) txt += `  メモ: ${e.note}\n`;
     if(e.gps) txt += `  位置: ${e.gps.lat}, ${e.gps.lon}\n`;
   });
@@ -1547,6 +1707,10 @@ function preparePrint(){
     if(e.cleaningMethod) html += `<br>洗浄方法: ${escapeHtml(e.cleaningMethod)}`;
     if(e.materials && e.materials.length){
       html += `<br>使用資材: ${escapeHtml(e.materials.map(m=>`${m.name} ${m.amount!=null?m.amount:''}${m.unit||''}`).join('、'))}`;
+    }
+    if(e.seedlingQty!=null) html += `<br>育苗数量: ${e.seedlingQty}${escapeHtml(e.seedlingUnit||'')}（残り${e.seedlingRemaining!=null?e.seedlingRemaining:e.seedlingQty}${escapeHtml(e.seedlingUnit||'')}）`;
+    if(e.seedlingSources && e.seedlingSources.length){
+      html += `<br>苗の由来: ${escapeHtml(e.seedlingSources.map(s=>`${s.label||''} ${s.qty!=null?s.qty:''}${s.unit||''}`).join('、'))}`;
     }
     if(e.note) html += `<br>メモ: ${escapeHtml(e.note)}`;
     if(e.gps) html += `<br>位置: ${e.gps.lat}, ${e.gps.lon}`;
@@ -1578,6 +1742,8 @@ function buildSheetRows(c){
     (e.machines||[]).join('、'),
     e.cleaningMethod || '',
     (e.materials||[]).map(m=>`${m.name} ${m.amount!=null?m.amount:''}${m.unit||''}`).join('、'),
+    e.seedlingQty!=null ? `${e.seedlingQty}${e.seedlingUnit||''}` : '',
+    (e.seedlingSources||[]).map(s=>`${s.label||''} ${s.qty!=null?s.qty:''}${s.unit||''}`).join('、'),
     e.note || '',
     (e.gpsStart && e.gpsStart.mapUrl) || '',
     (e.gpsEnd && e.gpsEnd.mapUrl) || ''
@@ -1786,7 +1952,9 @@ function bindTabEvents(){
 
   document.getElementById('inpTaskType').addEventListener('change', (e)=>{
     document.getElementById('inpTaskOther').style.display = e.target.value==='その他（自由入力）' ? 'block' : 'none';
+    updateSeedlingSectionVisibility();
   });
+  document.getElementById('addSeedlingRowBtn').addEventListener('click', addSeedlingRow);
 
   document.getElementById('gpsToggleBtn').addEventListener('click', toggleGpsWork);
 
