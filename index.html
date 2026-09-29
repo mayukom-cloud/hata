@@ -219,6 +219,12 @@ main{padding:16px; max-width:640px; margin:0 auto;}
   50%{ box-shadow:0 0 0 8px rgba(180,70,46,0); }
 }
 .work-status{font-size:14px; margin-top:8px; color:var(--ink-soft); font-weight:700;}
+.edit-banner{
+  display:flex; justify-content:space-between; align-items:center; gap:10px;
+  background:var(--accent-soft); color:#6B4708; border-radius:10px; padding:10px 12px;
+  font-size:14px; font-weight:700; margin-bottom:12px;
+}
+.edit-banner button{background:none; border:1.5px solid #6B4708; color:#6B4708; border-radius:8px; padding:5px 10px; font-size:13px; font-weight:700; cursor:pointer;}
 
 .btn-photo{background:var(--soil-soft); color:#4A2F17; width:100%;}
 .btn-photo.has-photo{background:var(--soil); color:#fff;}
@@ -381,6 +387,10 @@ main{padding:16px; max-width:640px; margin:0 auto;}
   <section class="tab active" id="tab-input">
     <div class="card">
       <h2>📝 作業を記録</h2>
+      <div class="edit-banner" id="editBanner" style="display:none;">
+        <span>✏️ この記録を編集しています</span>
+        <button type="button" id="cancelEditBtn">キャンセル</button>
+      </div>
       <div class="field">
         <label>作業日</label>
         <input type="date" id="inpDate">
@@ -521,6 +531,7 @@ main{padding:16px; max-width:640px; margin:0 auto;}
       </div>
 
       <button class="btn btn-primary" id="saveEntryBtn" style="display:none;">この作業を保存</button>
+      <button class="btn btn-primary" id="saveEditBtn" style="display:none;">✏️ 編集を保存</button>
     </div>
 
     <h2 style="font-size:15px; color:var(--primary-dark); margin:18px 4px 10px;">本日の記録（全員分）</h2>
@@ -666,6 +677,7 @@ let machinesList = [];
 let materialCategories = [];
 let seedlingBatchesCache = [];
 let activeEntryId = null;
+let editingEntryId = null;
 let activeEntryStartAt = null;
 let timerInterval = null;
 
@@ -1126,6 +1138,7 @@ async function loadSeedlingBatches(){
   }
 }
 function seedlingSourceLabel(e){
+  if(e._labelOverride) return e._labelOverride;
   const remaining = e.seedlingRemaining!=null ? e.seedlingRemaining : e.seedlingQty;
   const unit = e.seedlingUnit || '';
   return `${e.date} ${e.field||''}${e.crop?'・'+e.crop:''} — 残り${remaining}${unit}／全${e.seedlingQty}${unit}`;
@@ -1260,6 +1273,12 @@ function subscribeToday(){
     wrap.querySelectorAll('[data-note-edit]').forEach(btn=>{
       btn.addEventListener('click', ()=> editEntryNote(btn.dataset.noteEdit, btn.dataset.note));
     });
+    wrap.querySelectorAll('[data-full-edit]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const target = entries.find(e=>e.id===btn.dataset.fullEdit);
+        if(target) enterEditMode(target.id, target);
+      });
+    });
   }, (err)=>console.error('today sync error', err));
 }
 
@@ -1286,8 +1305,11 @@ function entryHtml(e, opts={}){
   const seedlingUseLine = (e.seedlingSources && e.seedlingSources.length)
     ? `<div class="entry-note">🌱 苗の由来: ${e.seedlingSources.map(s=>`${escapeHtml(s.label||'')} ${s.qty!=null?s.qty:''}${escapeHtml(s.unit||'')}`).join('、')}</div>`
     : '';
+  const fullEditBtn = (showActions && e.id !== activeEntryId)
+    ? `<button class="edit" data-full-edit="${e.id}">編集</button>` : '';
   const actions = showActions ? `
       <div class="entry-actions">
+        ${fullEditBtn}
         <button class="edit" data-edit="${e.id}" data-start="${e.start||''}" data-end="${e.end||''}">時刻を修正</button>
         <button class="edit" data-note-edit="${e.id}" data-note="${escapeHtml(e.note||'')}">メモを編集</button>
         <button class="del" data-del="${e.id}">削除</button>
@@ -1627,6 +1649,177 @@ function resetForm(){
   document.getElementById('photoBtn').textContent = '📷 写真を撮る・選ぶ';
   document.getElementById('photoThumb').style.display = 'none';
   document.getElementById('durationHint').textContent = '';
+}
+
+/* ---------- full entry edit (after work is finished) ---------- */
+function addSeedlingRowFor(s){
+  const rowId = 'sr'+Date.now()+Math.random().toString(36).slice(2,6);
+  const wrap = document.getElementById('seedlingRows');
+  wrap.insertAdjacentHTML('beforeend', seedlingRowHtml(rowId));
+  const rowEl = wrap.querySelector(`[data-row-id="${rowId}"]`);
+  wireSeedlingRow(rowEl);
+  populateSeedlingSelect(rowEl.querySelector('.seed-source'), s.sourceEntryId);
+  rowEl.querySelector('.seed-qty').value = s.qty!=null ? s.qty : '';
+}
+
+async function populateFormForEdit(e){
+  document.getElementById('inpDate').value = e.date || todayStr();
+  document.getElementById('inpField').value = e.field || '';
+  document.getElementById('inpCrop').value = e.crop || '';
+
+  const taskSel = document.getElementById('inpTaskType');
+  const taskOtherInput = document.getElementById('inpTaskOther');
+  const knownTaskTypes = Array.from(taskSel.options).map(o=>o.value);
+  if(knownTaskTypes.includes(e.taskType)){
+    taskSel.value = e.taskType;
+    taskOtherInput.style.display = 'none';
+    taskOtherInput.value = '';
+  } else {
+    taskSel.value = 'その他（自由入力）';
+    taskOtherInput.style.display = 'block';
+    taskOtherInput.value = e.taskType || '';
+  }
+
+  document.querySelectorAll('.machine-check').forEach(cb=>{
+    cb.checked = (e.machines||[]).includes(cb.value);
+  });
+  updateCleaningVisibility();
+
+  document.querySelectorAll('input[name="cleaningMethod"]').forEach(r=> r.checked = false);
+  document.getElementById('cleaningOtherInput').style.display = 'none';
+  document.getElementById('cleaningOtherInput').value = '';
+  if(e.cleaningMethod){
+    const known = ['農業用水にて洗浄','現地にて土落とし'];
+    if(known.includes(e.cleaningMethod)){
+      const r = document.querySelector(`input[name="cleaningMethod"][value="${e.cleaningMethod}"]`);
+      if(r) r.checked = true;
+    } else {
+      const other = document.querySelector('input[name="cleaningMethod"][value="その他"]');
+      if(other) other.checked = true;
+      document.getElementById('cleaningOtherInput').style.display = 'block';
+      document.getElementById('cleaningOtherInput').value = e.cleaningMethod;
+    }
+  }
+
+  clearMaterialRows();
+  (e.materials||[]).forEach(m=>{
+    addMaterialRow();
+    const rows = document.querySelectorAll('.material-row');
+    const rowEl = rows[rows.length-1];
+    const catSel = rowEl.querySelector('.mat-category');
+    catSel.value = m.category || '';
+    populateMaterialSelect(rowEl.querySelector('.mat-name'), catSel.value, m.name);
+    rowEl.querySelector('.mat-amount').value = m.amount!=null ? m.amount : '';
+    rowEl.querySelector('.mat-unit').value = m.unit || '';
+  });
+
+  const isSowing = taskSel.value === '播種・育苗';
+  const isPlanting = taskSel.value === '定植';
+  document.getElementById('seedlingProduceSection').style.display = isSowing ? 'block' : 'none';
+  document.getElementById('seedlingUseSection').style.display = isPlanting ? 'block' : 'none';
+  document.getElementById('seedlingQtyInput').value = e.seedlingQty!=null ? e.seedlingQty : '';
+  document.getElementById('seedlingUnitInput').value = e.seedlingUnit || '';
+
+  clearSeedlingRows();
+  if(isPlanting){
+    await loadSeedlingBatches();
+    (e.seedlingSources||[]).forEach(s=>{
+      if(!seedlingBatchesCache.some(b=>b.id===s.sourceEntryId)){
+        seedlingBatchesCache.push({
+          id: s.sourceEntryId, date:'', field:'', crop:'',
+          seedlingQty:null, seedlingRemaining:null, seedlingUnit:s.unit,
+          _labelOverride: s.label || '(削除済みまたは使い切った記録)'
+        });
+      }
+    });
+    (e.seedlingSources||[]).forEach(s=> addSeedlingRowFor(s));
+  }
+
+  document.getElementById('inpNote').value = e.note || '';
+  currentPhoto = e.photo || null;
+  const photoBtn = document.getElementById('photoBtn');
+  const photoThumb = document.getElementById('photoThumb');
+  if(currentPhoto){
+    photoBtn.textContent = '📷 写真を変更する';
+    photoBtn.classList.add('has-photo');
+    photoThumb.src = currentPhoto;
+    photoThumb.style.display = 'block';
+  } else {
+    photoBtn.textContent = '📷 写真を撮る・選ぶ';
+    photoBtn.classList.remove('has-photo');
+    photoThumb.style.display = 'none';
+  }
+}
+
+async function enterEditMode(entryId, entryData){
+  editingEntryId = entryId;
+  switchTab('input');
+  document.getElementById('startWorkSection').style.display = 'none';
+  document.getElementById('endWorkSection').style.display = 'none';
+  document.getElementById('manualTimeSection').style.display = 'none';
+  document.getElementById('saveEntryBtn').style.display = 'none';
+  document.getElementById('editBanner').style.display = 'flex';
+  document.getElementById('saveEditBtn').style.display = 'flex';
+  await populateFormForEdit(entryData);
+  const card = document.querySelector('#tab-input .card');
+  if(card) card.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function exitEditMode(){
+  editingEntryId = null;
+  document.getElementById('editBanner').style.display = 'none';
+  document.getElementById('saveEditBtn').style.display = 'none';
+  document.getElementById('inpDate').value = todayStr();
+  resetForm();
+  updateFormModeForDate();
+  updateSeedlingSectionVisibility();
+}
+
+async function saveEntryEdit(){
+  if(!editingEntryId) return;
+  const btn = document.getElementById('saveEditBtn');
+  btn.disabled = true;
+  const entryId = editingEntryId;
+  const seedProd = getSeedlingProduction();
+  const newSeedlingSources = getSeedlingSources();
+  try{
+    const snap = await getDoc(doc(entriesCol(), entryId));
+    if(!snap.exists()) throw new Error('entry-not-found');
+    const oldEntry = snap.data();
+    const oldSources = oldEntry.seedlingSources || [];
+    const oldQty = oldEntry.seedlingQty!=null ? oldEntry.seedlingQty : 0;
+    const newQty = seedProd.seedlingQty!=null ? seedProd.seedlingQty : 0;
+    const qtyDelta = newQty - oldQty;
+
+    const updates = {
+      date: document.getElementById('inpDate').value || oldEntry.date,
+      taskType: currentTaskType(),
+      field: document.getElementById('inpField').value.trim(),
+      crop: document.getElementById('inpCrop').value.trim(),
+      note: document.getElementById('inpNote').value.trim(),
+      machines: getSelectedMachines(),
+      cleaningMethod: getCleaningMethod(),
+      materials: getMaterialsUsage(),
+      seedlingQty: seedProd.seedlingQty,
+      seedlingUnit: seedProd.seedlingUnit,
+      seedlingSources: newSeedlingSources,
+      photo: currentPhoto
+    };
+    if(qtyDelta !== 0) updates.seedlingRemaining = increment(qtyDelta);
+
+    await updateDoc(doc(entriesCol(), entryId), updates);
+
+    if(oldSources.length) await restoreSeedlingUsage(oldSources);
+    if(newSeedlingSources.length) await applySeedlingUsage(newSeedlingSources);
+
+    showToast('記録を更新しました');
+    exitEditMode();
+  }catch(e){
+    console.error(e);
+    showToast('更新に失敗しました');
+  }finally{
+    btn.disabled = false;
+  }
 }
 
 /* ---------- Photo ---------- */
@@ -1984,6 +2177,7 @@ function bindTabEvents(){
   document.getElementById('setupFarmCode').addEventListener('input', updateAuthUI);
 
   document.getElementById('inpDate').addEventListener('change', ()=>{
+    if(editingEntryId) return;
     updateFormModeForDate();
     subscribeToday();
   });
@@ -2057,6 +2251,8 @@ function bindTabEvents(){
   });
 
   document.getElementById('saveEntryBtn').addEventListener('click', saveManualEntry);
+  document.getElementById('saveEditBtn').addEventListener('click', saveEntryEdit);
+  document.getElementById('cancelEditBtn').addEventListener('click', exitEditMode);
 
   document.getElementById('reportDate').addEventListener('change', subscribeReport);
   document.getElementById('printBtn').addEventListener('click', preparePrint);
