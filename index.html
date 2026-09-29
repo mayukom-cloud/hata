@@ -395,10 +395,6 @@ main{padding:16px; max-width:640px; margin:0 auto;}
         <label>作業日</label>
         <input type="date" id="inpDate">
       </div>
-      <div class="field" id="startWorkSection">
-        <button class="btn btn-start-toggle" id="startWorkBtn" type="button">▶ 開始</button>
-        <div class="work-status" id="workStatusDisplay"></div>
-      </div>
       <div class="field">
         <label>圃場</label>
         <select id="inpField">
@@ -444,6 +440,11 @@ main{padding:16px; max-width:640px; margin:0 auto;}
           <option value="その他（自由入力）">その他（自由入力）</option>
         </select>
         <input type="text" id="inpTaskOther" placeholder="作業内容を入力" style="margin-top:8px; display:none;">
+      </div>
+
+      <div class="field" id="startWorkSection">
+        <button class="btn btn-start-toggle" id="startWorkBtn" type="button">▶ 開始</button>
+        <div class="work-status" id="workStatusDisplay"></div>
       </div>
 
       <div class="field">
@@ -1529,6 +1530,7 @@ async function resumeActiveEntryIfAny(){
       if(snap.exists() && snap.data().status === 'in_progress' && snap.data().workerName === workerName){
         activeEntryId = local.id;
         activeEntryStartAt = local.startAt;
+        await populateFormForEdit({id: local.id, ...snap.data()});
         enterInProgressUI();
         return;
       }
@@ -1544,6 +1546,7 @@ async function resumeActiveEntryIfAny(){
       activeEntryId = d.id;
       activeEntryStartAt = d.data().startAt || Date.now();
       saveActiveEntryLocal({id: d.id, startAt: activeEntryStartAt});
+      await populateFormForEdit({id: d.id, ...d.data()});
       enterInProgressUI();
     }
   }catch(e){ console.error('resume query failed', e); }
