@@ -1,0 +1,2430 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>畑ノート | 農作業日報</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2F5233">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="畑ノート">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Noto+Sans+JP:wght@400;500;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F4F6EE;
+  --surface:#FFFFFF;
+  --ink:#1E2A1C;
+  --ink-soft:#4B5A45;
+  --primary:#2F5233;
+  --primary-dark:#1F3A24;
+  --accent:#D98E2B;
+  --accent-soft:#F5E2C2;
+  --soil:#7A5230;
+  --soil-soft:#E9DCC9;
+  --sky:#5F8A9A;
+  --sky-soft:#E2EEF1;
+  --danger:#B4462E;
+  --danger-soft:#F6DFD8;
+  --line:#DCD9CB;
+  --radius:14px;
+  --safe-bottom:env(safe-area-inset-bottom, 0px);
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:'Noto Sans JP', sans-serif;
+  min-height:100vh;
+  padding-bottom:calc(78px + var(--safe-bottom));
+}
+h1,h2,h3,.disp{font-family:'Zen Kaku Gothic New', sans-serif;}
+button, select, input, textarea{font-family:inherit; font-size:16px;}
+.num{font-family:'Roboto Mono', monospace;}
+
+/* ---------- Setup screen ---------- */
+#setupScreen{
+  position:fixed; inset:0; background:var(--primary); z-index:100;
+  display:flex; align-items:center; justify-content:center; padding:24px;
+  overflow-y:auto;
+}
+#setupScreen.hidden{display:none;}
+.setup-card{
+  background:#fff; border-radius:18px; padding:26px 22px; max-width:420px; width:100%;
+}
+.setup-card .sp-icon{font-size:40px; text-align:center; margin-bottom:6px;}
+.setup-card h1{font-size:19px; text-align:center; margin:0 0 6px; color:var(--primary-dark);}
+.setup-card p.sp-desc{font-size:15px; color:var(--ink-soft); text-align:center; margin:0 0 20px; line-height:1.6;}
+.setup-card .field{margin-bottom:14px;}
+.setup-card .field label{display:block; font-size:14px; color:var(--ink-soft); margin-bottom:5px; font-weight:700;}
+.setup-card .field input{width:100%; padding:12px; border:1.5px solid var(--line); border-radius:10px; background:#FCFBF7;}
+.setup-card .field .hint{font-size:13px; color:var(--ink-soft); margin-top:5px; line-height:1.5;}
+.setup-status{font-size:14px; color:var(--ink-soft); text-align:center; margin-top:12px; min-height:16px;}
+.google-status{
+  display:flex; align-items:center; gap:8px; font-size:15px; color:var(--ink-soft);
+  background:#F5F3EA; border-radius:8px; padding:10px 12px; margin-bottom:8px;
+}
+.google-status.signed-in{color:var(--primary-dark); font-weight:700;}
+.google-status .gs-avatar{width:22px; height:22px; border-radius:50%;}
+
+/* Header */
+.topbar{
+  background:var(--primary);
+  color:#fff;
+  padding:18px 18px 22px;
+  position:relative;
+  overflow:hidden;
+}
+.topbar::after{
+  content:"";
+  position:absolute; right:-30px; top:-30px;
+  width:140px; height:140px;
+  border-radius:50%;
+  background:rgba(255,255,255,0.06);
+}
+.topbar-row{display:flex; justify-content:space-between; align-items:flex-start; gap:10px; position:relative; z-index:1;}
+.farm-name{font-size:15px; opacity:0.85; margin:0 0 2px;}
+.today-date{font-family:'Zen Kaku Gothic New',sans-serif; font-weight:900; font-size:26px; margin:0; letter-spacing:0.02em;}
+.today-sub{font-size:14px; opacity:0.8; margin:4px 0 0;}
+.sync-badge{display:inline-flex; align-items:center; gap:4px; font-size:13px; opacity:0.85; margin-top:4px;}
+.sync-dot{width:7px; height:7px; border-radius:50%; background:#8FBF6A;}
+.sync-dot.offline{background:#D98E2B;}
+.settings-btn{
+  background:rgba(255,255,255,0.14); border:none; color:#fff;
+  width:38px; height:38px; border-radius:10px; font-size:18px;
+  display:flex; align-items:center; justify-content:center; cursor:pointer;
+}
+.settings-panel{
+  margin-top:14px; background:rgba(255,255,255,0.1); border-radius:10px; padding:12px;
+  display:none; position:relative; z-index:1;
+}
+.settings-panel.open{display:block;}
+.settings-panel label{display:block; font-size:13px; opacity:0.85; margin-bottom:4px; margin-top:8px;}
+.settings-panel label:first-child{margin-top:0;}
+.settings-panel input{width:100%; padding:8px 10px; border-radius:8px; border:none; margin-bottom:2px;}
+.settings-panel .row-btns{display:flex; gap:8px; margin-top:12px;}
+.settings-panel button.save{background:var(--accent); color:var(--primary-dark); border:none; font-weight:700; padding:9px 14px; border-radius:8px; flex:1; cursor:pointer;}
+.settings-panel button.reset{background:transparent; color:#fff; border:1px solid rgba(255,255,255,0.4); padding:9px 14px; border-radius:8px; cursor:pointer;}
+
+main{padding:16px; max-width:640px; margin:0 auto;}
+.tab{display:none;}
+.tab.active{display:block;}
+
+/* Cards */
+.card{
+  background:var(--surface);
+  border-radius:var(--radius);
+  padding:16px;
+  margin-bottom:14px;
+  border:1px solid var(--line);
+}
+.card h2{font-size:15px; margin:0 0 12px; color:var(--primary-dark); display:flex; align-items:center; gap:8px;}
+.field{margin-bottom:12px;}
+.field label{display:block; font-size:14px; color:var(--ink-soft); margin-bottom:5px; font-weight:500;}
+.field input, .field select, .field textarea{
+  width:100%; padding:11px 12px; border:1.5px solid var(--line); border-radius:10px;
+  background:#FCFBF7; color:var(--ink);
+}
+.field textarea{resize:vertical; min-height:56px;}
+.link-btn{
+  background:none; border:none; color:var(--primary); font-size:14px; font-weight:700;
+  padding:6px 0 0; cursor:pointer; text-decoration:underline;
+}
+.field-manager{
+  display:none; margin-top:10px; background:#F5F3EA; border:1px solid var(--line);
+  border-radius:10px; padding:10px;
+}
+.field-manager.open{display:block;}
+.field-manager-row{
+  display:flex; justify-content:space-between; align-items:center;
+  padding:8px 4px; border-bottom:1px dashed var(--line); font-size:14px;
+}
+.field-manager-row:last-child{border-bottom:none;}
+.field-manager-row button{
+  background:none; border:none; color:var(--danger); font-size:14px; cursor:pointer; padding:4px 6px;
+}
+.field-manager-empty{font-size:14px; color:var(--ink-soft); padding:6px 4px;}
+.field-manager-add{display:flex; gap:8px; margin-top:8px;}
+.field-manager-add input{flex:1; padding:9px 10px; border:1.5px solid var(--line); border-radius:8px; background:#fff;}
+.field-manager-add .btn{padding:9px 14px; min-height:auto;}
+
+.chip-list{display:flex; flex-wrap:wrap; gap:8px;}
+.chip-check{
+  display:inline-flex; align-items:center; gap:6px;
+  background:#F5F3EA; border:1.5px solid var(--line); border-radius:20px;
+  padding:7px 12px; font-size:15px; cursor:pointer;
+}
+.chip-check input{width:15px; height:15px; margin:0;}
+.chip-check:has(input:checked){background:var(--primary); border-color:var(--primary); color:#fff;}
+
+.radio-list{display:flex; flex-direction:column; gap:8px;}
+.radio-list label{display:flex; align-items:center; gap:8px; font-size:14px;}
+.radio-list input{width:16px; height:16px; margin:0;}
+
+.material-row{
+  display:grid; grid-template-columns:1fr 1fr 70px 56px 28px; gap:6px;
+  margin-bottom:8px; align-items:center;
+}
+.material-row select, .material-row input{
+  padding:8px 6px; border:1.5px solid var(--line); border-radius:8px; background:#FCFBF7; font-size:15px; width:100%;
+}
+.material-row .mat-remove{
+  background:none; border:none; color:var(--danger); font-size:16px; cursor:pointer; padding:0;
+}
+.material-cat-block{
+  background:#fff; border:1px solid var(--line); border-radius:10px; padding:10px; margin-bottom:10px;
+}
+.material-cat-header{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;}
+.material-cat-header b{font-size:14px; color:var(--primary-dark);}
+.material-cat-header button{background:none; border:none; color:var(--danger); font-size:13px; cursor:pointer;}
+.field-manager .field-manager-add input{margin-bottom:0;}
+.seedling-row{
+  display:grid; grid-template-columns:1fr 70px 28px; gap:6px;
+  margin-bottom:8px; align-items:center;
+}
+.seedling-row select, .seedling-row input{
+  padding:8px 6px; border:1.5px solid var(--line); border-radius:8px; background:#FCFBF7; font-size:15px; width:100%;
+}
+.seedling-row .seed-remove{
+  background:none; border:none; color:var(--danger); font-size:16px; cursor:pointer; padding:0;
+}
+.two-col{display:flex; gap:10px;}
+.two-col > .field{flex:1;}
+.duration-hint{font-size:14px; color:var(--ink-soft); margin-top:4px;}
+
+.btn{
+  border:none; border-radius:10px; padding:12px 16px; font-weight:700; cursor:pointer;
+  display:inline-flex; align-items:center; justify-content:center; gap:6px; min-height:48px;
+}
+.btn-primary{background:var(--primary); color:#fff; width:100%;}
+.btn-primary:active{background:var(--primary-dark);}
+.btn-primary:disabled{opacity:0.6;}
+.btn-outline{background:#fff; color:var(--primary); border:1.5px solid var(--primary);}
+.btn-gps{background:var(--sky-soft); color:#274752; width:100%;}
+.btn-gps.active{background:var(--sky); color:#fff;}
+.btn-start-toggle{background:var(--sky-soft); color:#274752; width:100%; font-size:16px;}
+.btn-start-toggle:disabled{opacity:0.5;}
+.btn-end-toggle{
+  background:var(--danger); color:#fff; width:100%; font-size:16px; border:none;
+  animation:pulse-rec 1.6s ease-in-out infinite;
+}
+@keyframes pulse-rec{
+  0%,100%{ box-shadow:0 0 0 0 rgba(180,70,46,0.35); }
+  50%{ box-shadow:0 0 0 8px rgba(180,70,46,0); }
+}
+.work-status{font-size:14px; margin-top:8px; color:var(--ink-soft); font-weight:700;}
+.edit-banner{
+  display:flex; justify-content:space-between; align-items:center; gap:10px;
+  background:var(--accent-soft); color:#6B4708; border-radius:10px; padding:10px 12px;
+  font-size:14px; font-weight:700; margin-bottom:12px;
+}
+.edit-banner button{background:none; border:1.5px solid #6B4708; color:#6B4708; border-radius:8px; padding:5px 10px; font-size:13px; font-weight:700; cursor:pointer;}
+
+.btn-photo{background:var(--soil-soft); color:#4A2F17; width:100%;}
+.btn-photo.has-photo{background:var(--soil); color:#fff;}
+.btn-block{width:100%;}
+.btn-row{display:flex; gap:10px; margin-top:14px;}
+.btn-row .btn{flex:1;}
+
+.gps-result, .photo-result{font-size:14px; margin-top:8px; color:var(--ink-soft);}
+.gps-result a{color:var(--sky); font-weight:700; text-decoration:none;}
+.photo-thumb{margin-top:8px; max-width:120px; border-radius:8px; display:block; border:1px solid var(--line);}
+
+/* Furrow timeline */
+.timeline{position:relative; padding-left:26px;}
+.timeline::before{
+  content:"";
+  position:absolute; left:9px; top:6px; bottom:6px; width:2px;
+  background-image:repeating-linear-gradient(to bottom, var(--soil) 0, var(--soil) 6px, transparent 6px, transparent 12px);
+}
+.entry{position:relative; margin-bottom:14px;}
+.entry::before{
+  content:"";
+  position:absolute; left:-26px; top:14px;
+  width:12px; height:12px; border-radius:50%;
+  background:var(--accent); border:2px solid #fff; box-shadow:0 0 0 2px var(--soil);
+}
+.entry-card{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:12px 14px;}
+.entry-top{display:flex; justify-content:space-between; align-items:baseline; gap:8px;}
+.entry-time{font-family:'Roboto Mono',monospace; font-weight:700; color:var(--primary-dark); font-size:14px;}
+.entry-dur{font-size:14px; color:var(--ink-soft);}
+.entry-task{font-weight:700; margin:4px 0 2px; font-size:15px;}
+.entry-field{font-size:15px; color:var(--ink-soft); margin-bottom:2px;}
+.entry-worker{font-size:14px; color:var(--soil); margin-bottom:6px; font-weight:700;}
+.entry-note{font-size:15px; color:var(--ink-soft); margin-bottom:6px; white-space:pre-wrap;}
+.entry-meta{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+.badge{font-size:13px; padding:3px 8px; border-radius:20px; font-weight:700; display:inline-flex; align-items:center; gap:4px;}
+.badge-gps{background:var(--sky-soft); color:#1B4451;}
+.badge-photo{background:var(--soil-soft); color:#4A2F17;}
+.badge-pending{background:var(--accent-soft); color:#6B4708;}
+.badge-exported{background:var(--sky-soft); color:#1B4451;}
+.badge-progress{background:var(--danger-soft); color:var(--danger);}
+.entry-actions button.edit{color:var(--sky);}
+.entry-thumb{width:56px; height:56px; border-radius:8px; object-fit:cover; border:1px solid var(--line);}
+.entry-actions{display:flex; gap:8px; margin-top:8px;}
+.entry-actions button{background:none; border:none; font-size:14px; color:var(--ink-soft); cursor:pointer; padding:4px 6px; text-decoration:underline;}
+.entry-actions button.del{color:var(--danger);}
+
+.empty{text-align:center; padding:30px 10px; color:var(--ink-soft);}
+.empty .icon{font-size:34px; margin-bottom:8px;}
+
+/* Report */
+.date-picker-row{display:flex; align-items:center; gap:10px; margin-bottom:14px;}
+.date-picker-row input{flex:1;}
+.stat-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;}
+.stat-box{background:var(--primary); color:#fff; border-radius:12px; padding:14px;}
+.stat-box .label{font-size:13px; opacity:0.85;}
+.stat-box .value{font-family:'Zen Kaku Gothic New',sans-serif; font-weight:900; font-size:22px; margin-top:2px;}
+.stat-box.alt{background:var(--accent); color:#3B2606;}
+.breakdown-row{display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px dashed var(--line); font-size:14px;}
+.breakdown-row:last-child{border-bottom:none;}
+.report-actions{display:flex; gap:10px; margin:14px 0;}
+.sheet-export-status{font-size:14px; color:var(--ink-soft); margin-top:8px; text-align:center;}
+.range-row{display:flex; align-items:center; gap:8px; margin-bottom:12px;}
+.range-row input{flex:1; min-width:0; padding:10px 8px; border:1.5px solid var(--line); border-radius:10px; background:#FCFBF7;}
+.range-row span{color:var(--ink-soft);}
+.range-quick{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px;}
+.range-quick button{background:#F5F3EA; border:1.5px solid var(--line); border-radius:20px; padding:6px 12px; font-size:14px; cursor:pointer; color:var(--ink);}
+.history-hint{font-size:13px; color:var(--ink-soft); margin:-4px 0 12px;}
+
+/* History */
+.history-item{display:flex; justify-content:space-between; align-items:center; padding:14px; border:1px solid var(--line); border-radius:12px; margin-bottom:10px; background:#fff; cursor:pointer;}
+.history-item:active{background:var(--bg);}
+.history-date{font-weight:700; font-size:15px;}
+.history-sub{font-size:14px; color:var(--ink-soft); margin-top:2px;}
+.history-arrow{color:var(--soil); font-size:18px;}
+
+/* Tab bar */
+.tabbar{
+  position:fixed; left:0; right:0; bottom:0;
+  background:#fff; border-top:1px solid var(--line);
+  display:flex; padding-bottom:var(--safe-bottom);
+  z-index:20;
+}
+.tabbar button{
+  flex:1; background:none; border:none; padding:10px 4px 8px; cursor:pointer;
+  color:var(--ink-soft); display:flex; flex-direction:column; align-items:center; gap:3px; font-size:13px; font-weight:700;
+}
+.tabbar button .ic{font-size:20px;}
+.tabbar button.active{color:var(--primary);}
+
+.toast{
+  position:fixed; bottom:calc(90px + var(--safe-bottom)); left:50%; transform:translateX(-50%);
+  background:var(--primary-dark); color:#fff; padding:10px 18px; border-radius:30px; font-size:15px;
+  opacity:0; pointer-events:none; transition:opacity 0.25s; z-index:30; white-space:nowrap;
+}
+.toast.show{opacity:1;}
+
+.print-area{display:none;}
+@media print{
+  body *{visibility:hidden;}
+  .print-area, .print-area *{visibility:visible;}
+  .print-area{position:absolute; left:0; top:0; width:100%; display:block; padding:20px;}
+  .print-title{font-size:20px; font-weight:900; margin-bottom:4px;}
+  .print-sub{font-size:12px; color:#555; margin-bottom:16px;}
+  .print-stats{display:flex; gap:20px; margin-bottom:16px; font-size:13px;}
+  .print-entry{border-bottom:1px solid #ccc; padding:8px 0; font-size:13px;}
+  .print-entry b{font-size:14px;}
+}
+</style>
+</head>
+<body>
+
+<div id="setupScreen">
+  <div class="setup-card">
+    <div class="sp-icon">🌱</div>
+    <h1>畑ノートへようこそ</h1>
+    <p class="sp-desc">家族・従業員のみなさんと記録を自動で共有するために、最初に設定してください。</p>
+    <div class="field">
+      <label>農場コード（全員で同じものを使います）</label>
+      <input type="text" id="setupFarmCode" placeholder="例）yamada-farm-2026">
+      <div class="hint">初めての場合は自由に決めてください。他の家族・従業員の端末にも同じコードを入力してもらうと、記録が自動的にひとつにまとまります。</div>
+    </div>
+    <div class="field">
+      <label>あなたのアカウント</label>
+      <div class="google-status" id="googleAccountStatus">未ログイン</div>
+      <button class="btn btn-outline btn-block" id="googleLoginBtn" type="button">Googleでログイン</button>
+    </div>
+    <button class="btn btn-primary" id="setupSaveBtn" disabled>保存して始める</button>
+    <div class="setup-status" id="setupStatus"></div>
+  </div>
+</div>
+
+<div class="topbar">
+  <div class="topbar-row">
+    <div>
+      <p class="farm-name" id="farmNameDisp">農場名未設定</p>
+      <p class="today-date" id="todayDateDisp">-</p>
+      <p class="today-sub" id="todayCountDisp">本日の記録 0件</p>
+      <p class="sync-badge"><span class="sync-dot" id="syncDot"></span><span id="syncLabel">同期中...</span></p>
+    </div>
+    <button class="settings-btn" id="settingsToggle" aria-label="設定">⚙</button>
+  </div>
+  <div class="settings-panel" id="settingsPanel">
+    <label>農場名（表示用・全員に共通）</label>
+    <input type="text" id="farmNameInput" placeholder="例）〇〇農園">
+    <label>あなたのアカウント</label>
+    <div class="google-status" id="settingsGoogleStatus">未ログイン</div>
+    <label>表示名（作業記録に表示されます）</label>
+    <input type="text" id="workerNameInput" placeholder="例）山田太郎">
+    <label>農場コード</label>
+    <input type="text" id="farmCodeInput" placeholder="農場コード">
+    <div class="hint" style="opacity:0.75; font-size:13px; margin-top:2px;">コードを変えると別の農場データに切り替わります（新しい端末を仲間に追加する時は、同じコードを入力してもらってください）。</div>
+    <label>Google スプレッドシートID（日報の転記先・全員に共通）</label>
+    <input type="text" id="sheetIdInput" placeholder="スプレッドシートのURLの/d/と/editの間の文字列">
+    <label>作業記録：シート名・開始セル</label>
+    <input type="text" id="sheetRangeInput" placeholder="例）Sheet1!A1">
+    <div class="row-btns">
+      <button class="save" id="saveSettingsBtn">保存</button>
+      <button class="reset" id="logoutBtn">ログアウト</button>
+    </div>
+  </div>
+</div>
+
+<main>
+
+  <!-- 入力タブ -->
+  <section class="tab active" id="tab-input">
+    <div class="card">
+      <h2>📝 作業を記録</h2>
+      <div class="edit-banner" id="editBanner" style="display:none;">
+        <span>✏️ この記録を編集しています</span>
+        <button type="button" id="cancelEditBtn">キャンセル</button>
+      </div>
+      <div class="field">
+        <label>作業日</label>
+        <input type="date" id="inpDate">
+      </div>
+      <div class="field">
+        <label>圃場</label>
+        <select id="inpField">
+          <option value="">選択してください</option>
+        </select>
+        <button type="button" class="link-btn" id="manageFieldsBtn">＋ 圃場を管理する</button>
+        <div class="field-manager" id="fieldManager">
+          <div id="fieldManagerList"></div>
+          <div class="field-manager-add">
+            <input type="text" id="newFieldInput" placeholder="例）北畑・トマト">
+            <button type="button" class="btn btn-outline" id="addFieldBtn">追加</button>
+          </div>
+        </div>
+      </div>
+      <div class="field">
+        <label>作物・品種（任意）</label>
+        <input type="text" id="inpCrop" placeholder="例）ミニトマト（桃太郎）">
+      </div>
+      <div class="field">
+        <label>作業内容</label>
+        <select id="inpTaskType">
+          <option value="耕起・整地">耕起・整地</option>
+          <option value="畝立て">畝立て</option>
+          <option value="播種・育苗">播種・育苗</option>
+          <option value="定植">定植</option>
+          <option value="施肥">施肥</option>
+          <option value="防除（農薬散布）">防除（農薬散布）</option>
+          <option value="除草">除草</option>
+          <option value="灌水">灌水</option>
+          <option value="収穫">収穫</option>
+          <option value="選別・調製">選別・調製</option>
+          <option value="納品入庫">納品入庫</option>
+          <option value="城東配送">城東配送</option>
+          <option value="郡山配送">郡山配送</option>
+          <option value="市内集荷">市内集荷</option>
+          <option value="剪定・誘引">剪定・誘引</option>
+          <option value="資材管理・点検">資材管理・点検</option>
+          <option value="資材搬入">資材搬入</option>
+          <option value="機械回送">機械回送</option>
+          <option value="機械設定">機械設定</option>
+          <option value="機械メンテナンス・修理">機械メンテナンス・修理</option>
+          <option value="片付">片付</option>
+          <option value="その他（自由入力）">その他（自由入力）</option>
+        </select>
+        <input type="text" id="inpTaskOther" placeholder="作業内容を入力" style="margin-top:8px; display:none;">
+      </div>
+
+      <div class="field" id="startWorkSection">
+        <button class="btn btn-start-toggle" id="startWorkBtn" type="button">▶ 開始</button>
+        <div class="work-status" id="workStatusDisplay"></div>
+      </div>
+
+      <div class="field">
+        <label>使用機械（複数選択可）</label>
+        <div id="machineChecklist" class="chip-list"></div>
+        <button type="button" class="link-btn" id="manageMachinesBtn">＋ 機械を管理する</button>
+        <div class="field-manager" id="machineManager">
+          <div id="machineManagerList"></div>
+          <div class="field-manager-add">
+            <input type="text" id="newMachineInput" placeholder="例）KUBOTA_XXXX">
+            <button type="button" class="btn btn-outline" id="addMachineBtn">追加</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="field" id="cleaningSection" style="display:none;">
+        <label>機械の洗浄方法</label>
+        <div class="radio-list">
+          <label><input type="radio" name="cleaningMethod" value="農業用水にて洗浄"> 農業用水にて洗浄</label>
+          <label><input type="radio" name="cleaningMethod" value="現地にて土落とし"> 現地にて土落とし</label>
+          <label><input type="radio" name="cleaningMethod" value="その他"> その他（自由記述）</label>
+        </div>
+        <input type="text" id="cleaningOtherInput" placeholder="洗浄方法を入力" style="margin-top:8px; display:none;">
+      </div>
+
+      <div class="field">
+        <label>使用資材</label>
+        <div id="materialRows"></div>
+        <button type="button" class="btn btn-outline btn-block" id="addMaterialRowBtn">＋ 資材を追加</button>
+        <button type="button" class="link-btn" id="manageMaterialsBtn">＋ 資材を管理する</button>
+        <div class="field-manager" id="materialManager">
+          <div id="materialManagerList"></div>
+          <div class="field-manager-add">
+            <input type="text" id="newCategoryInput" placeholder="新しい分類名（例：農薬）">
+            <button type="button" class="btn btn-outline" id="addCategoryBtn">分類を追加</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="field" id="seedlingProduceSection" style="display:none;">
+        <label>育苗数量</label>
+        <div class="two-col">
+          <input type="number" id="seedlingQtyInput" placeholder="数量" step="any" inputmode="decimal">
+          <input type="text" id="seedlingUnitInput" placeholder="単位（例：本・株・トレー）">
+        </div>
+        <div class="hint" style="font-size:13px; color:var(--ink-soft); margin-top:4px;">ここで記録した数量が、後で「定植」の際に苗の選択肢として使えるようになります。</div>
+      </div>
+
+      <div class="field" id="seedlingUseSection" style="display:none;">
+        <label>使用した苗（播種記録から選択）</label>
+        <div id="seedlingRows"></div>
+        <button type="button" class="btn btn-outline btn-block" id="addSeedlingRowBtn">＋ 苗を追加</button>
+      </div>
+
+      <div class="field" id="manualTimeSection" style="display:none;">
+        <label>作業時間（過去日の手動記録）</label>
+        <div class="two-col">
+          <div class="field">
+            <label>開始時刻</label>
+            <input type="time" id="inpStart">
+          </div>
+          <div class="field">
+            <label>終了時刻</label>
+            <input type="time" id="inpEnd">
+          </div>
+        </div>
+        <p class="duration-hint" id="durationHint"></p>
+      </div>
+
+      <div class="field">
+        <label>写真</label>
+        <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none;">
+        <button class="btn btn-photo" id="photoBtn" type="button">📷 写真を撮る・選ぶ</button>
+        <div class="photo-result" id="photoResult"></div>
+        <img id="photoThumb" class="photo-thumb" style="display:none;">
+      </div>
+
+      <div class="field">
+        <label>メモ</label>
+        <textarea id="inpNote" placeholder="気づいたこと、収量、天候など"></textarea>
+      </div>
+
+      <div class="field" id="endWorkSection" style="display:none;">
+        <button class="btn btn-end-toggle" id="endWorkBtn" type="button">⏹ 終了</button>
+      </div>
+
+      <button class="btn btn-primary" id="saveEntryBtn" style="display:none;">この作業を保存</button>
+      <button class="btn btn-primary" id="saveEditBtn" style="display:none;">✏️ 編集を保存</button>
+    </div>
+
+    <h2 style="font-size:15px; color:var(--primary-dark); margin:18px 4px 10px;">本日の記録（全員分）</h2>
+    <div id="todayTimeline"></div>
+  </section>
+
+  <!-- 日報タブ -->
+  <section class="tab" id="tab-report">
+    <div class="card">
+      <div class="date-picker-row">
+        <input type="date" id="reportDate">
+      </div>
+      <div class="stat-grid">
+        <div class="stat-box">
+          <div class="label">合計作業時間</div>
+          <div class="value num" id="statTotalTime">0:00</div>
+        </div>
+        <div class="stat-box alt">
+          <div class="label">作業件数</div>
+          <div class="value num" id="statCount">0件</div>
+        </div>
+      </div>
+      <h2>作業内訳</h2>
+      <div id="breakdownList"></div>
+      <div class="report-actions">
+        <button class="btn btn-outline" id="printBtn" style="flex:1;">🖨 印刷用に表示</button>
+        <button class="btn btn-outline" id="copyBtn" style="flex:1;">📋 テキストをコピー</button>
+      </div>
+      <button class="btn btn-primary" id="sheetExportBtn">📊 この日をスプレッドシートに転記</button>
+      <div class="sheet-export-status" id="sheetExportStatus"></div>
+    </div>
+
+    <div class="card">
+      <h2>📊 期間を指定してまとめて転記</h2>
+      <div class="range-row">
+        <input type="date" id="rangeFrom">
+        <span>〜</span>
+        <input type="date" id="rangeTo">
+      </div>
+      <div class="range-quick">
+        <button type="button" data-range="thisMonth">今月</button>
+        <button type="button" data-range="lastMonth">先月</button>
+        <button type="button" data-range="last7">直近7日</button>
+      </div>
+      <button class="btn btn-primary" id="rangeExportBtn">📊 期間内の未転記分をまとめて転記</button>
+      <div class="sheet-export-status" id="rangeExportStatus"></div>
+    </div>
+
+    <div id="reportEntries"></div>
+  </section>
+
+  <!-- 履歴タブ -->
+  <section class="tab" id="tab-history">
+    <div class="card">
+      <h2>📅 過去の日報</h2>
+      <p class="history-hint">日付をタップすると、その日の記録を確認・編集できます。</p>
+      <div id="historyList"></div>
+    </div>
+  </section>
+
+</main>
+
+<div class="print-area" id="printArea"></div>
+
+<nav class="tabbar">
+  <button data-tab="input" class="active"><span class="ic">📝</span>入力</button>
+  <button data-tab="report"><span class="ic">📄</span>日報</button>
+  <button data-tab="history"><span class="ic">📅</span>履歴</button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
+import {
+  initializeFirestore, persistentLocalCache, persistentSingleTabManager,
+  collection, doc, addDoc, updateDoc, getDoc, deleteDoc, setDoc, onSnapshot,
+  query, where, orderBy, limit, getDocs, arrayUnion, arrayRemove, increment
+} from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
+import {
+  getAuth, GoogleAuthProvider, signInWithPopup,
+  onAuthStateChanged, signOut
+} from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
+
+/* =========================================================================
+   Firebase設定
+   下記のプレースホルダーを、あなた自身のFirebaseプロジェクトの値に
+   置き換えてください（Firebaseコンソール > プロジェクトの設定 >全般 >
+   マイアプリ の「SDK の設定と構成」に表示される値です）。
+   ========================================================================= */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyB2J9-Nl-BdZBEVrcvXjMUM1uhcKjOPEg0",
+  authDomain: "hatanote.firebaseapp.com",
+  projectId: "hatanote",
+  storageBucket: "hatanote.firebasestorage.app",
+  messagingSenderId: "129056862865",
+  appId: "1:129056862865:web:143360e3f1a3330af90530"
+};
+
+const TASK_ICONS = {
+  "耕起・整地":"🚜","畝立て":"⛰️","播種・育苗":"🌱","定植":"🌿","施肥":"💧","防除（農薬散布）":"🧪",
+  "除草":"✂️","灌水":"🚿","収穫":"🧺","選別・調製":"📦","納品入庫":"📥",
+  "城東配送":"🚚","郡山配送":"🚚","市内集荷":"🚐",
+  "剪定・誘引":"🌳","資材管理・点検":"🔧","資材搬入":"📦",
+  "機械回送":"🚛","機械設定":"🛠️","機械メンテナンス・修理":"🔩",
+  "片付":"🧹","その他（自由入力）":"📌"
+};
+
+const MACHINE_SEED = [
+  "KUBOTA_KT235","ATEX_MX1000A","KOSHIN_EX-20PDX",
+  "KUBOTA_1050A_ハッスルロータリー平高畝","自走式動噴"
+];
+
+const MATERIAL_SEED = [
+  { name:"マルチ", items:[
+    { name:"オークラ黒マルチ_0.03x135x200m", unit:"m" },
+    { name:"こかげマルチ_0.03x135x200m(エドビ仕入)", unit:"m" }
+  ]},
+  { name:"種_レタス", items:[
+    { name:"KRVキレべ", unit:"袋" },
+    { name:"PURプルナイ", unit:"袋" }
+  ]},
+  { name:"種_白菜", items:[
+    { name:"お黄にいり", unit:"袋" }
+  ]},
+  { name:"種_緑肥", items:[] },
+  { name:"種_軟弱葉物", items:[
+    { name:"千筋水菜", unit:"袋" }
+  ]},
+  { name:"種_根菜", items:[
+    { name:"三太郎", unit:"袋" }
+  ]},
+  { name:"農薬", items:[
+    { name:"ゼンターリ水和剤", unit:"g" },
+    { name:"ボタニガードes", unit:"ml" },
+    { name:"スピノエース顆粒水和剤", unit:"g" }
+  ]},
+  { name:"培土", items:[
+    { name:"阪中緑化ゆうきくん", unit:"L" },
+    { name:"わかばオーガニック培土", unit:"L" }
+  ]}
+];
+
+let app, db, auth;
+let googleProvider;
+let currentUser = null;
+let sheetsAccessToken = null;
+let appStarted = false;
+let farmCode = '';
+let workerName = '';
+let currentPhoto = null;
+let currentTab = 'input';
+let unsubToday = null;
+let unsubReport = null;
+let unsubFields = null;
+let unsubSettings = null;
+let unsubMachines = null;
+let unsubMaterials = null;
+let machinesList = [];
+let materialCategories = [];
+let seedlingBatchesCache = [];
+let activeEntryId = null;
+let editingEntryId = null;
+let editReturnTab = null;
+let editingWasExported = false;
+let activeEntryStartAt = null;
+let timerInterval = null;
+
+function pad(n){ return String(n).padStart(2,'0'); }
+function todayStr(){
+  const d = new Date();
+  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+}
+function dispDate(str){
+  const [y,m,d] = str.split('-').map(Number);
+  const dt = new Date(y, m-1, d);
+  const wd = ['日','月','火','水','木','金','土'][dt.getDay()];
+  return `${m}月${d}日（${wd}）`;
+}
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+function minutesToHM(mins){
+  const h = Math.floor(mins/60), m = mins%60;
+  return h + ':' + pad(m);
+}
+function calcDuration(start, end){
+  if(!start || !end) return null;
+  const [sh,sm] = start.split(':').map(Number);
+  const [eh,em] = end.split(':').map(Number);
+  let total = (eh*60+em) - (sh*60+sm);
+  if(total < 0) total += 24*60;
+  return total;
+}
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ---------- device-local config (farm code, optional display-name override) ---------- */
+function loadDeviceConfig(){
+  try{ return JSON.parse(localStorage.getItem('hatanote-device-config') || 'null'); }
+  catch(e){ return null; }
+}
+function saveDeviceConfig(cfg){
+  localStorage.setItem('hatanote-device-config', JSON.stringify(cfg));
+}
+function loadActiveEntryLocal(){
+  try{ return JSON.parse(localStorage.getItem('hatanote-active-entry') || 'null'); }
+  catch(e){ return null; }
+}
+function saveActiveEntryLocal(obj){
+  localStorage.setItem('hatanote-active-entry', JSON.stringify(obj));
+}
+function clearActiveEntryLocal(){
+  localStorage.removeItem('hatanote-active-entry');
+}
+
+/* ---------- Firestore refs ---------- */
+function entriesCol(){ return collection(db, 'farms', farmCode, 'entries'); }
+function metaFieldsRef(){ return doc(db, 'farms', farmCode, 'meta', 'fields'); }
+function metaSettingsRef(){ return doc(db, 'farms', farmCode, 'meta', 'settings'); }
+function metaMachinesRef(){ return doc(db, 'farms', farmCode, 'meta', 'machines'); }
+function metaMaterialsRef(){ return doc(db, 'farms', farmCode, 'meta', 'materials'); }
+
+/* ---------- image compression ---------- */
+function compressImage(file){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = (e)=>{
+      const img = new Image();
+      img.onload = ()=>{
+        const maxW = 640;
+        const scale = Math.min(1, maxW/img.width);
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width*scale;
+        canvas.height = img.height*scale;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        let quality = 0.55;
+        let out = canvas.toDataURL('image/jpeg', quality);
+        while(out.length > 650000 && quality > 0.2){
+          quality -= 0.1;
+          out = canvas.toDataURL('image/jpeg', quality);
+        }
+        resolve(out);
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ---------- Firebase init ---------- */
+function initFirebase(){
+  app = initializeApp(FIREBASE_CONFIG);
+  db = initializeFirestore(app, {
+    localCache: persistentLocalCache({ tabManager: persistentSingleTabManager() })
+  });
+  auth = getAuth(app);
+  googleProvider = new GoogleAuthProvider();
+  googleProvider.addScope('https://www.googleapis.com/auth/spreadsheets');
+}
+
+function setSyncStatus(){
+  const dot = document.getElementById('syncDot');
+  const label = document.getElementById('syncLabel');
+  if(navigator.onLine){
+    dot.classList.remove('offline');
+    label.textContent = 'オンライン・自動同期中';
+  } else {
+    dot.classList.add('offline');
+    label.textContent = 'オフライン（記録は端末に保存され、電波が戻ると自動送信されます）';
+  }
+}
+
+/* ---------- auth UI (setup screen + settings panel) ---------- */
+function updateAuthUI(){
+  const loggedIn = !!currentUser;
+  const nameOrEmail = currentUser ? (currentUser.displayName || currentUser.email || '不明なアカウント') : '';
+
+  const setupStatusEl = document.getElementById('googleAccountStatus');
+  if(setupStatusEl){
+    setupStatusEl.textContent = loggedIn ? `✅ ${nameOrEmail} でログイン中` : '未ログイン';
+    setupStatusEl.classList.toggle('signed-in', loggedIn);
+  }
+  const loginBtn = document.getElementById('googleLoginBtn');
+  if(loginBtn) loginBtn.style.display = loggedIn ? 'none' : 'flex';
+  const setupCodeEl = document.getElementById('setupFarmCode');
+  const saveBtn = document.getElementById('setupSaveBtn');
+  if(saveBtn) saveBtn.disabled = !(loggedIn && setupCodeEl && setupCodeEl.value.trim());
+
+  const settingsStatusEl = document.getElementById('settingsGoogleStatus');
+  if(settingsStatusEl){
+    settingsStatusEl.textContent = loggedIn ? `✅ ${nameOrEmail}` : '未ログイン';
+    settingsStatusEl.classList.toggle('signed-in', loggedIn);
+  }
+}
+
+/* ---------- setup screen ---------- */
+function showSetupScreen(prefillFarmCode){
+  const scr = document.getElementById('setupScreen');
+  scr.classList.remove('hidden');
+  if(prefillFarmCode) document.getElementById('setupFarmCode').value = prefillFarmCode;
+  updateAuthUI();
+}
+function hideSetupScreen(){
+  document.getElementById('setupScreen').classList.add('hidden');
+}
+
+async function handleSetupSave(){
+  const code = document.getElementById('setupFarmCode').value.trim();
+  const status = document.getElementById('setupStatus');
+  if(!currentUser){
+    status.textContent = 'Googleでログインしてください。';
+    return;
+  }
+  if(!code){
+    status.textContent = '農場コードを入力してください。';
+    return;
+  }
+  status.textContent = '接続しています...';
+  const existing = loadDeviceConfig() || {};
+  saveDeviceConfig({farmCode: code, workerNameOverride: existing.workerNameOverride || ''});
+  farmCode = code;
+  workerName = existing.workerNameOverride || currentUser.displayName || currentUser.email || '匿名';
+  document.getElementById('workerNameInput').value = workerName;
+  document.getElementById('farmCodeInput').value = code;
+  hideSetupScreen();
+  appStarted = true;
+  await startApp();
+}
+
+/* ---------- app bootstrap ---------- */
+async function startApp(){
+  document.getElementById('inpDate').value = todayStr();
+  document.getElementById('reportDate').value = todayStr();
+  setQuickRange('thisMonth');
+  const now = new Date();
+  document.getElementById('inpStart').value = pad(now.getHours())+':'+pad(now.getMinutes());
+  updateHeaderDate();
+  updateFormModeForDate();
+  updateSeedlingSectionVisibility();
+  setSyncStatus();
+
+  subscribeFields();
+  subscribeMachines();
+  subscribeMaterials();
+  subscribeSettings();
+  subscribeToday();
+  await resumeActiveEntryIfAny();
+}
+
+function updateFormModeForDate(){
+  const isToday = document.getElementById('inpDate').value === todayStr();
+  document.getElementById('startWorkSection').style.display = isToday ? 'block' : 'none';
+  document.getElementById('manualTimeSection').style.display = isToday ? 'none' : 'block';
+  document.getElementById('saveEntryBtn').style.display = isToday ? 'none' : 'flex';
+}
+
+function updateHeaderDate(){
+  document.getElementById('todayDateDisp').textContent = dispDate(todayStr());
+}
+
+/* ---------- shared field list (Firestore) ---------- */
+function subscribeFields(){
+  if(unsubFields) unsubFields();
+  unsubFields = onSnapshot(metaFieldsRef(), (snap)=>{
+    const list = snap.exists() ? (snap.data().list || []) : [];
+    renderFieldUI(list);
+  }, (err)=>console.error('fields sync error', err));
+}
+function renderFieldUI(list){
+  const sel = document.getElementById('inpField');
+  const prev = sel.value;
+  sel.innerHTML = `<option value="">選択してください</option>` +
+    list.map(f=>`<option value="${escapeHtml(f)}">${escapeHtml(f)}</option>`).join('');
+  if(list.includes(prev)) sel.value = prev;
+
+  const mgrList = document.getElementById('fieldManagerList');
+  if(list.length===0){
+    mgrList.innerHTML = `<div class="field-manager-empty">登録された圃場がありません。下から追加してください。</div>`;
+  } else {
+    mgrList.innerHTML = list.map(f=>`
+      <div class="field-manager-row">
+        <span>${escapeHtml(f)}</span>
+        <button type="button" data-remove-field="${escapeHtml(f)}">削除</button>
+      </div>`).join('');
+    mgrList.querySelectorAll('[data-remove-field]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const name = btn.dataset.removeField;
+        if(!confirm(`「${name}」を圃場一覧から削除しますか？\n（過去の記録は残ります）`)) return;
+        try{ await setDoc(metaFieldsRef(), {list: arrayRemove(name)}, {merge:true}); }catch(e){ console.error(e); }
+        showToast('削除しました');
+      });
+    });
+  }
+}
+async function addField(name){
+  name = (name||'').trim();
+  if(!name) return;
+  try{ await setDoc(metaFieldsRef(), {list: arrayUnion(name)}, {merge:true}); }
+  catch(e){ console.error(e); showToast('追加に失敗しました（電波を確認してください）'); }
+}
+
+/* ---------- shared machine list ---------- */
+function subscribeMachines(){
+  if(unsubMachines) unsubMachines();
+  unsubMachines = onSnapshot(metaMachinesRef(), async (snap)=>{
+    if(!snap.exists()){
+      try{ await setDoc(metaMachinesRef(), {list: MACHINE_SEED}); }catch(e){ console.error(e); }
+      return; // onSnapshot fires again once the seed write lands
+    }
+    machinesList = snap.data().list || [];
+    renderMachineUI();
+  }, (err)=>console.error('machines sync error', err));
+}
+function getSelectedMachines(){
+  return Array.from(document.querySelectorAll('.machine-check:checked')).map(cb=>cb.value);
+}
+function updateCleaningVisibility(){
+  document.getElementById('cleaningSection').style.display = getSelectedMachines().length>0 ? 'block' : 'none';
+}
+function renderMachineUI(){
+  const checkedSet = new Set(getSelectedMachines());
+  const container = document.getElementById('machineChecklist');
+  container.innerHTML = machinesList.map(m=>`
+    <label class="chip-check">
+      <input type="checkbox" class="machine-check" value="${escapeHtml(m)}" ${checkedSet.has(m)?'checked':''}>
+      <span>${escapeHtml(m)}</span>
+    </label>`).join('');
+  container.querySelectorAll('.machine-check').forEach(cb=>{
+    cb.addEventListener('change', updateCleaningVisibility);
+  });
+  updateCleaningVisibility();
+
+  const mgrList = document.getElementById('machineManagerList');
+  if(machinesList.length===0){
+    mgrList.innerHTML = `<div class="field-manager-empty">登録された機械がありません。下から追加してください。</div>`;
+  } else {
+    mgrList.innerHTML = machinesList.map(m=>`
+      <div class="field-manager-row">
+        <span>${escapeHtml(m)}</span>
+        <button type="button" data-remove-machine="${escapeHtml(m)}">削除</button>
+      </div>`).join('');
+    mgrList.querySelectorAll('[data-remove-machine]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const name = btn.dataset.removeMachine;
+        if(!confirm(`「${name}」を機械一覧から削除しますか？\n（過去の記録は残ります）`)) return;
+        try{ await setDoc(metaMachinesRef(), {list: arrayRemove(name)}, {merge:true}); }catch(e){ console.error(e); }
+        showToast('削除しました');
+      });
+    });
+  }
+}
+async function addMachine(name){
+  name = (name||'').trim();
+  if(!name) return;
+  try{ await setDoc(metaMachinesRef(), {list: arrayUnion(name)}, {merge:true}); }
+  catch(e){ console.error(e); showToast('追加に失敗しました（電波を確認してください）'); }
+}
+
+/* ---------- shared hierarchical material list ---------- */
+function subscribeMaterials(){
+  if(unsubMaterials) unsubMaterials();
+  unsubMaterials = onSnapshot(metaMaterialsRef(), async (snap)=>{
+    if(!snap.exists()){
+      try{ await setDoc(metaMaterialsRef(), {categories: MATERIAL_SEED}); }catch(e){ console.error(e); }
+      return;
+    }
+    materialCategories = snap.data().categories || [];
+    renderMaterialUI();
+  }, (err)=>console.error('materials sync error', err));
+}
+function populateCategorySelect(sel){
+  const prev = sel.value;
+  sel.innerHTML = `<option value="">分類を選択</option>` +
+    materialCategories.map(c=>`<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join('');
+  if(materialCategories.some(c=>c.name===prev)) sel.value = prev;
+}
+function populateMaterialSelect(sel, categoryName, keepValue){
+  const prev = keepValue!=null ? keepValue : sel.value;
+  const cat = materialCategories.find(c=>c.name===categoryName);
+  const items = cat ? (cat.items||[]) : [];
+  sel.innerHTML = `<option value="">資材を選択</option>` +
+    items.map(it=>`<option value="${escapeHtml(it.name)}" data-unit="${escapeHtml(it.unit||'')}">${escapeHtml(it.name)}</option>`).join('');
+  if(items.some(it=>it.name===prev)) sel.value = prev;
+}
+function materialRowHtml(rowId){
+  return `
+  <div class="material-row" data-row-id="${rowId}">
+    <select class="mat-category"></select>
+    <select class="mat-name"></select>
+    <input type="number" class="mat-amount" placeholder="使用量" step="any" inputmode="decimal">
+    <input type="text" class="mat-unit" placeholder="単位">
+    <button type="button" class="mat-remove" title="削除">✕</button>
+  </div>`;
+}
+function wireMaterialRow(rowEl){
+  const catSel = rowEl.querySelector('.mat-category');
+  const nameSel = rowEl.querySelector('.mat-name');
+  const unitInput = rowEl.querySelector('.mat-unit');
+  populateCategorySelect(catSel);
+  populateMaterialSelect(nameSel, catSel.value);
+  catSel.addEventListener('change', ()=> populateMaterialSelect(nameSel, catSel.value, ''));
+  nameSel.addEventListener('change', ()=>{
+    const opt = nameSel.selectedOptions[0];
+    const unit = opt ? opt.dataset.unit : '';
+    if(unit) unitInput.value = unit;
+  });
+  rowEl.querySelector('.mat-remove').addEventListener('click', ()=> rowEl.remove());
+}
+function addMaterialRow(){
+  const rowId = 'mr'+Date.now()+Math.random().toString(36).slice(2,6);
+  const wrap = document.getElementById('materialRows');
+  wrap.insertAdjacentHTML('beforeend', materialRowHtml(rowId));
+  wireMaterialRow(wrap.querySelector(`[data-row-id="${rowId}"]`));
+}
+function getMaterialsUsage(){
+  return Array.from(document.querySelectorAll('.material-row')).map(rowEl=>({
+    category: rowEl.querySelector('.mat-category').value,
+    name: rowEl.querySelector('.mat-name').value,
+    amount: rowEl.querySelector('.mat-amount').value ? parseFloat(rowEl.querySelector('.mat-amount').value) : null,
+    unit: rowEl.querySelector('.mat-unit').value.trim()
+  })).filter(m=>m.name);
+}
+function clearMaterialRows(){
+  document.getElementById('materialRows').innerHTML = '';
+}
+function renderMaterialUI(){
+  document.querySelectorAll('.material-row').forEach(rowEl=>{
+    const catSel = rowEl.querySelector('.mat-category');
+    const nameSel = rowEl.querySelector('.mat-name');
+    const prevCat = catSel.value, prevName = nameSel.value;
+    populateCategorySelect(catSel);
+    populateMaterialSelect(nameSel, catSel.value || prevCat, prevName);
+  });
+  renderMaterialManager();
+}
+function renderMaterialManager(){
+  const el = document.getElementById('materialManagerList');
+  if(materialCategories.length===0){
+    el.innerHTML = `<div class="field-manager-empty">登録された資材分類がありません。下から追加してください。</div>`;
+    return;
+  }
+  el.innerHTML = materialCategories.map(cat=>`
+    <div class="material-cat-block">
+      <div class="material-cat-header">
+        <b>${escapeHtml(cat.name)}</b>
+        <button type="button" data-remove-cat="${escapeHtml(cat.name)}">分類を削除</button>
+      </div>
+      ${(cat.items||[]).map(it=>`
+        <div class="field-manager-row">
+          <span>${escapeHtml(it.name)}${it.unit ? '（単位: '+escapeHtml(it.unit)+'）' : ''}</span>
+          <button type="button" data-remove-item-cat="${escapeHtml(cat.name)}" data-remove-item-name="${escapeHtml(it.name)}">削除</button>
+        </div>`).join('') || `<div class="field-manager-empty">まだ資材がありません。</div>`}
+      <div class="field-manager-add">
+        <input type="text" class="new-item-name" data-cat="${escapeHtml(cat.name)}" placeholder="資材名">
+        <input type="text" class="new-item-unit" data-cat="${escapeHtml(cat.name)}" placeholder="単位" style="max-width:70px;">
+        <button type="button" class="btn btn-outline" data-add-item="${escapeHtml(cat.name)}">追加</button>
+      </div>
+    </div>`).join('');
+
+  el.querySelectorAll('[data-remove-cat]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const catName = btn.dataset.removeCat;
+      if(!confirm(`「${catName}」分類を削除しますか？（中の資材もすべて削除されます。過去の記録は残ります）`)) return;
+      const list = materialCategories.filter(c=>c.name!==catName);
+      try{ await setDoc(metaMaterialsRef(), {categories:list}); showToast('削除しました'); }
+      catch(e){ console.error(e); showToast('削除に失敗しました'); }
+    });
+  });
+  el.querySelectorAll('[data-remove-item-cat]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const catName = btn.dataset.removeItemCat;
+      const itemName = btn.dataset.removeItemName;
+      if(!confirm(`「${itemName}」を削除しますか？`)) return;
+      const list = materialCategories.map(c=> c.name===catName ? {...c, items:(c.items||[]).filter(it=>it.name!==itemName)} : c);
+      try{ await setDoc(metaMaterialsRef(), {categories:list}); showToast('削除しました'); }
+      catch(e){ console.error(e); showToast('削除に失敗しました'); }
+    });
+  });
+  el.querySelectorAll('[data-add-item]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const catName = btn.dataset.addItem;
+      const nameInput = btn.parentElement.querySelector('.new-item-name');
+      const unitInput = btn.parentElement.querySelector('.new-item-unit');
+      const name = nameInput.value.trim();
+      const unit = unitInput.value.trim();
+      if(!name){ nameInput.focus(); return; }
+      const list = materialCategories.map(c=> c.name===catName ? {...c, items:[...(c.items||[]), {name, unit}]} : c);
+      try{
+        await setDoc(metaMaterialsRef(), {categories:list});
+        showToast('資材を追加しました');
+      }catch(e){ console.error(e); showToast('追加に失敗しました'); }
+    });
+  });
+}
+async function addMaterialCategory(name){
+  name = (name||'').trim();
+  if(!name) return;
+  if(materialCategories.some(c=>c.name===name)){ showToast('同じ名前の分類があります'); return; }
+  const list = [...materialCategories, {name, items:[]}];
+  try{ await setDoc(metaMaterialsRef(), {categories:list}); showToast('分類を追加しました'); }
+  catch(e){ console.error(e); showToast('追加に失敗しました'); }
+}
+
+/* ---------- seedling batch traceability (播種・育苗 → 定植) ---------- */
+async function loadSeedlingBatches(){
+  try{
+    const q = query(entriesCol(), where('taskType','==','播種・育苗'), limit(300));
+    const snap = await getDocs(q);
+    seedlingBatchesCache = snap.docs
+      .map(d=>({id:d.id, ...d.data()}))
+      .filter(e=> e.seedlingQty!=null && (e.seedlingRemaining==null || e.seedlingRemaining>0))
+      .sort((a,b)=> (b.date||'').localeCompare(a.date||'') || (b.start||'').localeCompare(a.start||''));
+  }catch(e){
+    console.error('seedling batches load failed', e);
+    seedlingBatchesCache = [];
+  }
+}
+function seedlingSourceLabel(e){
+  if(e._labelOverride) return e._labelOverride;
+  const remaining = e.seedlingRemaining!=null ? e.seedlingRemaining : e.seedlingQty;
+  const unit = e.seedlingUnit || '';
+  return `${e.date} ${e.field||''}${e.crop?'・'+e.crop:''} — 残り${remaining}${unit}／全${e.seedlingQty}${unit}`;
+}
+function populateSeedlingSelect(sel, keepValue){
+  const prev = keepValue!=null ? keepValue : sel.value;
+  sel.innerHTML = `<option value="">播種記録を選択</option>` +
+    seedlingBatchesCache.map(e=>`<option value="${e.id}" data-unit="${escapeHtml(e.seedlingUnit||'')}" data-label="${escapeHtml(seedlingSourceLabel(e))}">${escapeHtml(seedlingSourceLabel(e))}</option>`).join('');
+  if(seedlingBatchesCache.some(e=>e.id===prev)) sel.value = prev;
+}
+function seedlingRowHtml(rowId){
+  return `
+  <div class="seedling-row" data-row-id="${rowId}">
+    <select class="seed-source"></select>
+    <input type="number" class="seed-qty" placeholder="使用数" step="any" inputmode="decimal">
+    <button type="button" class="seed-remove" title="削除">✕</button>
+  </div>`;
+}
+function wireSeedlingRow(rowEl){
+  populateSeedlingSelect(rowEl.querySelector('.seed-source'));
+  rowEl.querySelector('.seed-remove').addEventListener('click', ()=> rowEl.remove());
+}
+async function addSeedlingRow(){
+  await loadSeedlingBatches();
+  const rowId = 'sr'+Date.now()+Math.random().toString(36).slice(2,6);
+  const wrap = document.getElementById('seedlingRows');
+  wrap.insertAdjacentHTML('beforeend', seedlingRowHtml(rowId));
+  wireSeedlingRow(wrap.querySelector(`[data-row-id="${rowId}"]`));
+}
+function getSeedlingSources(){
+  return Array.from(document.querySelectorAll('.seedling-row')).map(rowEl=>{
+    const sel = rowEl.querySelector('.seed-source');
+    const opt = sel.selectedOptions[0];
+    return {
+      sourceEntryId: sel.value,
+      label: opt ? opt.dataset.label : '',
+      unit: opt ? opt.dataset.unit : '',
+      qty: rowEl.querySelector('.seed-qty').value ? parseFloat(rowEl.querySelector('.seed-qty').value) : null
+    };
+  }).filter(s=> s.sourceEntryId && s.qty>0);
+}
+function clearSeedlingRows(){
+  document.getElementById('seedlingRows').innerHTML = '';
+}
+async function applySeedlingUsage(sources){
+  for(const s of sources){
+    try{ await updateDoc(doc(entriesCol(), s.sourceEntryId), {seedlingRemaining: increment(-s.qty)}); }
+    catch(e){ console.error('seedling remaining update failed', e); }
+  }
+}
+async function restoreSeedlingUsage(sources){
+  for(const s of sources){
+    try{ await updateDoc(doc(entriesCol(), s.sourceEntryId), {seedlingRemaining: increment(s.qty)}); }
+    catch(e){ console.error('seedling remaining restore failed', e); }
+  }
+}
+function updateSeedlingSectionVisibility(){
+  const taskType = document.getElementById('inpTaskType').value;
+  const isSowing = taskType === '播種・育苗';
+  const isPlanting = taskType === '定植';
+  document.getElementById('seedlingProduceSection').style.display = isSowing ? 'block' : 'none';
+  document.getElementById('seedlingUseSection').style.display = isPlanting ? 'block' : 'none';
+  if(isPlanting) loadSeedlingBatches().then(()=>{
+    document.querySelectorAll('.seed-source').forEach(sel=> populateSeedlingSelect(sel));
+  });
+}
+
+/* ---------- shared settings (farm display name, spreadsheet target) ---------- */
+let currentSheetId = '';
+let currentSheetRange = 'Sheet1!A1';
+
+function subscribeSettings(){
+  if(unsubSettings) unsubSettings();
+  unsubSettings = onSnapshot(metaSettingsRef(), (snap)=>{
+    const data = snap.exists() ? snap.data() : {};
+    const farmName = data.farmName || '';
+    currentSheetId = data.sheetId || '';
+    currentSheetRange = data.sheetRange || 'Sheet1!A1';
+    document.getElementById('farmNameDisp').textContent = farmName || '農場名未設定（⚙で設定）';
+    if(document.activeElement !== document.getElementById('farmNameInput')){
+      document.getElementById('farmNameInput').value = farmName;
+    }
+    if(document.activeElement !== document.getElementById('sheetIdInput')){
+      document.getElementById('sheetIdInput').value = currentSheetId;
+    }
+    if(document.activeElement !== document.getElementById('sheetRangeInput')){
+      document.getElementById('sheetRangeInput').value = currentSheetRange;
+    }
+  }, (err)=>console.error('settings sync error', err));
+}
+async function saveFarmName(name){
+  try{ await setDoc(metaSettingsRef(), {farmName:name}, {merge:true}); }
+  catch(e){ console.error(e); showToast('保存に失敗しました（電波を確認してください）'); }
+}
+async function saveSheetSettings(sheetId, sheetRange){
+  try{ await setDoc(metaSettingsRef(), {sheetId, sheetRange}, {merge:true}); }
+  catch(e){ console.error(e); showToast('保存に失敗しました（電波を確認してください）'); }
+}
+
+/* ---------- today tab (live) ---------- */
+function subscribeToday(){
+  const date = document.getElementById('inpDate').value || todayStr();
+  if(unsubToday) unsubToday();
+  const q = query(entriesCol(), where('date','==',date));
+  unsubToday = onSnapshot(q, (snap)=>{
+    const entries = snap.docs.map(d=>({id:d.id, ...d.data(), _pending: d.metadata.hasPendingWrites}));
+    entries.sort((a,b)=> (a.start||'').localeCompare(b.start||''));
+    document.getElementById('todayCountDisp').textContent = `本日の記録 ${entries.length}件`;
+    const wrap = document.getElementById('todayTimeline');
+    if(entries.length===0){
+      wrap.innerHTML = `<div class="empty"><div class="icon">🌾</div>まだ記録がありません。<br>上のフォームから作業を記録しましょう。</div>`;
+      return;
+    }
+    wrap.innerHTML = `<div class="timeline">${entries.map(e=>entryHtml(e)).join('')}</div>`;
+    bindEntryActions(wrap, entries);
+  }, (err)=>console.error('today sync error', err));
+}
+
+function bindEntryActions(wrap, entries){
+  wrap.querySelectorAll('[data-del]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      if(!confirm('この記録を削除しますか？')) return;
+      try{
+        const target = entries.find(e=>e.id===btn.dataset.del);
+        if(target && target.seedlingSources && target.seedlingSources.length){
+          await restoreSeedlingUsage(target.seedlingSources);
+        }
+        await deleteDoc(doc(entriesCol(), btn.dataset.del));
+        showToast('削除しました');
+      }
+      catch(e){ console.error(e); showToast('削除に失敗しました'); }
+    });
+  });
+  wrap.querySelectorAll('[data-edit]').forEach(btn=>{
+    btn.addEventListener('click', ()=> editEntryTime(btn.dataset.edit, btn.dataset.start, btn.dataset.end));
+  });
+  wrap.querySelectorAll('[data-note-edit]').forEach(btn=>{
+    btn.addEventListener('click', ()=> editEntryNote(btn.dataset.noteEdit, btn.dataset.note));
+  });
+  wrap.querySelectorAll('[data-full-edit]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const target = entries.find(e=>e.id===btn.dataset.fullEdit);
+      if(target) enterEditMode(target.id, target);
+    });
+  });
+}
+
+function entryHtml(e, opts={}){
+  const showActions = opts.showActions !== false;
+  const icon = TASK_ICONS[e.taskType] || '📌';
+  const inProgress = e.status === 'in_progress';
+  const dur = e.durationMin!=null ? `<span class="entry-dur">（${minutesToHM(e.durationMin)}）</span>` : '';
+  const gpsObj = e.gpsEnd || e.gpsStart || e.gps || null;
+  const gpsBadge = gpsObj ? `<a class="badge badge-gps" href="${gpsObj.mapUrl}" target="_blank" rel="noopener">📍 位置記録あり</a>` : '';
+  const photoBadge = e.photo ? `<span class="badge badge-photo">📷 写真</span>` : '';
+  const pendingBadge = e._pending ? `<span class="badge badge-pending">⏳ 送信待ち</span>` : '';
+  const exportedBadge = e.exportedToSheet ? `<span class="badge badge-exported">📊 転記済み</span>` : '';
+  const progressBadge = inProgress ? `<span class="badge badge-progress">⏱ 作業中</span>` : '';
+  const photo = e.photo ? `<img class="entry-thumb" src="${e.photo}">` : '';
+  const machinesLine = (e.machines && e.machines.length) ? `<div class="entry-field">🚜 ${e.machines.map(escapeHtml).join('、')}</div>` : '';
+  const cleaningLine = e.cleaningMethod ? `<div class="entry-field">🧽 洗浄: ${escapeHtml(e.cleaningMethod)}</div>` : '';
+  const materialsLine = (e.materials && e.materials.length)
+    ? `<div class="entry-note">🧪 ${e.materials.map(m=>`${escapeHtml(m.name)} ${m.amount!=null?m.amount:''}${escapeHtml(m.unit||'')}`).join('、')}</div>`
+    : '';
+  const seedlingProduceLine = e.seedlingQty!=null
+    ? `<div class="entry-field">🌱 育苗数量: ${e.seedlingQty}${escapeHtml(e.seedlingUnit||'')}（残り${e.seedlingRemaining!=null?e.seedlingRemaining:e.seedlingQty}${escapeHtml(e.seedlingUnit||'')}）</div>`
+    : '';
+  const seedlingUseLine = (e.seedlingSources && e.seedlingSources.length)
+    ? `<div class="entry-note">🌱 苗の由来: ${e.seedlingSources.map(s=>`${escapeHtml(s.label||'')} ${s.qty!=null?s.qty:''}${escapeHtml(s.unit||'')}`).join('、')}</div>`
+    : '';
+  const fullEditBtn = (showActions && e.id !== activeEntryId)
+    ? `<button class="edit" data-full-edit="${e.id}">編集</button>` : '';
+  const actions = showActions ? `
+      <div class="entry-actions">
+        ${fullEditBtn}
+        <button class="edit" data-edit="${e.id}" data-start="${e.start||''}" data-end="${e.end||''}">時刻を修正</button>
+        <button class="edit" data-note-edit="${e.id}" data-note="${escapeHtml(e.note||'')}">メモを編集</button>
+        <button class="del" data-del="${e.id}">削除</button>
+      </div>` : '';
+  return `
+  <div class="entry">
+    <div class="entry-card">
+      <div class="entry-top">
+        <span class="entry-time num">${e.start||'--:--'} 〜 ${inProgress ? '…' : (e.end||'--:--')}</span>
+        ${dur}
+      </div>
+      <div class="entry-task">${icon} ${escapeHtml(e.taskType)}</div>
+      ${e.field ? `<div class="entry-field">🏞 ${escapeHtml(e.field)}${e.crop ? ' ／ ' + escapeHtml(e.crop) : ''}</div>` : ''}
+      ${machinesLine}
+      ${cleaningLine}
+      ${seedlingProduceLine}
+      ${e.workerName ? `<div class="entry-worker">👤 ${escapeHtml(e.workerName)}</div>` : ''}
+      ${materialsLine}
+      ${seedlingUseLine}
+      ${e.note ? `<div class="entry-note">${escapeHtml(e.note)}</div>` : ''}
+      <div class="entry-meta">${progressBadge}${gpsBadge}${photoBadge}${pendingBadge}${exportedBadge}${photo}</div>
+      ${actions}
+    </div>
+  </div>`;
+}
+
+function normalizeTimeInput(str){
+  if(!str) return '';
+  // convert full-width digits/colon to half-width
+  let s = str.replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0));
+  s = s.replace(/：/g, ':').trim();
+  const m = s.match(/^([0-9]{1,2}):?([0-9]{2})$/);
+  if(!m) return null;
+  const h = m[1].padStart(2,'0');
+  const mi = m[2];
+  if(Number(h) > 23 || Number(mi) > 59) return null;
+  return `${h}:${mi}`;
+}
+
+async function editEntryTime(entryId, currentStart, currentEnd){
+  let newStart = prompt('開始時刻を修正してください（例 09:30）', currentStart || '');
+  if(newStart === null) return;
+  newStart = normalizeTimeInput(newStart);
+  if(newStart === null){ showToast('開始時刻の形式が正しくありません（例 09:30）'); return; }
+  let newEnd = prompt('終了時刻を修正してください（例 10:15／作業中なら空欄のまま）', currentEnd || '');
+  if(newEnd === null) return;
+  let newEndNorm = '';
+  if(newEnd.trim()){
+    newEndNorm = normalizeTimeInput(newEnd);
+    if(newEndNorm === null){ showToast('終了時刻の形式が正しくありません（例 10:15）'); return; }
+  }
+  const updates = { start: newStart };
+  if(newEndNorm){
+    updates.end = newEndNorm;
+    updates.durationMin = calcDuration(updates.start, updates.end);
+    updates.status = 'done';
+  }
+  try{
+    await updateDoc(doc(entriesCol(), entryId), updates);
+    showToast('時刻を修正しました');
+  }catch(e){
+    console.error(e);
+    showToast('修正に失敗しました');
+  }
+}
+
+async function editEntryNote(entryId, currentNote){
+  const newNote = prompt('メモを編集してください', currentNote || '');
+  if(newNote === null) return;
+  try{
+    await updateDoc(doc(entriesCol(), entryId), { note: newNote.trim() });
+    showToast('メモを更新しました');
+  }catch(e){
+    console.error(e);
+    showToast('メモの更新に失敗しました');
+  }
+}
+
+/* ---------- collect current form values ---------- */
+function currentTaskType(){
+  let taskType = document.getElementById('inpTaskType').value;
+  if(taskType === 'その他（自由入力）'){
+    const other = document.getElementById('inpTaskOther').value.trim();
+    if(other) taskType = other;
+  }
+  return taskType;
+}
+
+function getCleaningMethod(){
+  const checked = document.querySelector('input[name="cleaningMethod"]:checked');
+  if(!checked) return '';
+  if(checked.value === 'その他') return document.getElementById('cleaningOtherInput').value.trim();
+  return checked.value;
+}
+
+function getSeedlingProduction(){
+  if(currentTaskType() !== '播種・育苗') return {seedlingQty:null, seedlingUnit:'', seedlingRemaining:null};
+  const qtyVal = document.getElementById('seedlingQtyInput').value;
+  const qty = qtyVal ? parseFloat(qtyVal) : null;
+  const unit = document.getElementById('seedlingUnitInput').value.trim();
+  return {seedlingQty: qty, seedlingUnit: unit, seedlingRemaining: qty};
+}
+
+/* ---------- GPS start/stop workflow (live, today only) ---------- */
+function getCurrentGpsAsync(){
+  return new Promise((resolve)=>{
+    if(!navigator.geolocation){ resolve(null); return; }
+    navigator.geolocation.getCurrentPosition(
+      (pos)=>{
+        const lat = pos.coords.latitude.toFixed(5);
+        const lon = pos.coords.longitude.toFixed(5);
+        const acc = Math.round(pos.coords.accuracy);
+        resolve({ lat, lon, accuracy: acc, mapUrl: `https://www.google.com/maps?q=${lat},${lon}` });
+      },
+      ()=> resolve(null),
+      { enableHighAccuracy:true, timeout:10000 }
+    );
+  });
+}
+
+async function startWork(){
+  const btn = document.getElementById('startWorkBtn');
+  btn.disabled = true;
+  const now = new Date();
+  const startHM = pad(now.getHours())+':'+pad(now.getMinutes());
+  const seedProd = getSeedlingProduction();
+  const entry = {
+    date: todayStr(),
+    taskType: currentTaskType(),
+    field: document.getElementById('inpField').value.trim(),
+    crop: document.getElementById('inpCrop').value.trim(),
+    note: document.getElementById('inpNote').value.trim(),
+    machines: getSelectedMachines(),
+    cleaningMethod: getCleaningMethod(),
+    materials: getMaterialsUsage(),
+    seedlingQty: seedProd.seedlingQty,
+    seedlingUnit: seedProd.seedlingUnit,
+    seedlingRemaining: seedProd.seedlingRemaining,
+    seedlingSources: [],
+    start: startHM, end: null, durationMin: null,
+    status: 'in_progress',
+    gpsStart: null, gpsEnd: null,
+    photo: currentPhoto,
+    workerName,
+    startAt: now.getTime(),
+    createdAt: now.getTime()
+  };
+  try{
+    const ref = await addDoc(entriesCol(), entry);
+    activeEntryId = ref.id;
+    activeEntryStartAt = now.getTime();
+    saveActiveEntryLocal({id: ref.id, startAt: activeEntryStartAt});
+    enterInProgressUI();
+    showToast('作業を開始しました');
+    getCurrentGpsAsync().then(gps=>{
+      if(gps) updateDoc(doc(entriesCol(), ref.id), {gpsStart: gps}).catch(()=>{});
+    });
+  }catch(e){
+    console.error(e);
+    showToast('開始の記録に失敗しました');
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+async function stopWork(){
+  if(!activeEntryId) return;
+  const btn = document.getElementById('endWorkBtn');
+  btn.disabled = true;
+  const now = new Date();
+  const endHM = pad(now.getHours())+':'+pad(now.getMinutes());
+  const durationMin = Math.max(0, Math.round((now.getTime() - activeEntryStartAt)/60000));
+  const entryId = activeEntryId;
+  const seedProd = getSeedlingProduction();
+  const seedlingSources = getSeedlingSources();
+
+  const updates = {
+    status: 'done', end: endHM, durationMin,
+    taskType: currentTaskType(),
+    field: document.getElementById('inpField').value.trim(),
+    crop: document.getElementById('inpCrop').value.trim(),
+    note: document.getElementById('inpNote').value.trim(),
+    machines: getSelectedMachines(),
+    cleaningMethod: getCleaningMethod(),
+    materials: getMaterialsUsage(),
+    seedlingQty: seedProd.seedlingQty,
+    seedlingUnit: seedProd.seedlingUnit,
+    seedlingRemaining: seedProd.seedlingRemaining,
+    seedlingSources,
+    photo: currentPhoto
+  };
+  try{
+    await updateDoc(doc(entriesCol(), entryId), updates);
+    showToast(`作業を記録しました（${minutesToHM(durationMin)}）`);
+    if(seedlingSources.length) applySeedlingUsage(seedlingSources);
+    getCurrentGpsAsync().then(gps=>{
+      if(gps) updateDoc(doc(entriesCol(), entryId), {gpsEnd: gps}).catch(()=>{});
+    });
+    clearActiveEntryLocal();
+    activeEntryId = null;
+    activeEntryStartAt = null;
+    exitInProgressUI();
+    resetForm();
+  }catch(e){
+    console.error(e);
+    showToast('終了の記録に失敗しました');
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+async function resumeActiveEntryIfAny(){
+  const local = loadActiveEntryLocal();
+  if(local && local.id){
+    try{
+      const snap = await getDoc(doc(entriesCol(), local.id));
+      if(snap.exists() && snap.data().status === 'in_progress' && snap.data().workerName === workerName){
+        activeEntryId = local.id;
+        activeEntryStartAt = local.startAt;
+        await populateFormForEdit({id: local.id, ...snap.data()});
+        enterInProgressUI();
+        return;
+      }
+    }catch(e){ console.error(e); }
+    // not this worker's entry (or it's gone/finished) — this device's stored pointer is stale
+    clearActiveEntryLocal();
+  }
+  try{
+    const q = query(entriesCol(), where('workerName','==',workerName), where('status','==','in_progress'), limit(1));
+    const snap = await getDocs(q);
+    if(!snap.empty){
+      const d = snap.docs[0];
+      activeEntryId = d.id;
+      activeEntryStartAt = d.data().startAt || Date.now();
+      saveActiveEntryLocal({id: d.id, startAt: activeEntryStartAt});
+      await populateFormForEdit({id: d.id, ...d.data()});
+      enterInProgressUI();
+    }
+  }catch(e){ console.error('resume query failed', e); }
+}
+
+function enterInProgressUI(){
+  document.getElementById('startWorkBtn').style.display = 'none';
+  document.getElementById('endWorkSection').style.display = 'block';
+  document.getElementById('inpDate').disabled = true;
+  startTimerDisplay();
+}
+function exitInProgressUI(){
+  document.getElementById('startWorkBtn').style.display = '';
+  document.getElementById('endWorkSection').style.display = 'none';
+  document.getElementById('inpDate').disabled = false;
+  stopTimerDisplay();
+  document.getElementById('workStatusDisplay').textContent = '';
+}
+function startTimerDisplay(){
+  updateTimerText();
+  if(timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(updateTimerText, 1000);
+}
+function stopTimerDisplay(){
+  if(timerInterval){ clearInterval(timerInterval); timerInterval = null; }
+}
+function updateTimerText(){
+  if(!activeEntryStartAt) return;
+  const elapsedSec = Math.floor((Date.now() - activeEntryStartAt)/1000);
+  const h = Math.floor(elapsedSec/3600);
+  const m = Math.floor((elapsedSec%3600)/60);
+  const s = elapsedSec%60;
+  const label = h>0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+  document.getElementById('workStatusDisplay').textContent = `作業中... 経過 ${label}`;
+}
+
+/* ---------- manual entry (backfill past dates) ---------- */
+async function saveManualEntry(){
+  const date = document.getElementById('inpDate').value || todayStr();
+  const start = document.getElementById('inpStart').value;
+  const end = document.getElementById('inpEnd').value;
+  const seedProd = getSeedlingProduction();
+  const seedlingSources = getSeedlingSources();
+  const entry = {
+    date,
+    taskType: currentTaskType(),
+    field: document.getElementById('inpField').value.trim(),
+    crop: document.getElementById('inpCrop').value.trim(),
+    start, end,
+    durationMin: calcDuration(start, end),
+    status: 'done',
+    note: document.getElementById('inpNote').value.trim(),
+    machines: getSelectedMachines(),
+    cleaningMethod: getCleaningMethod(),
+    materials: getMaterialsUsage(),
+    seedlingQty: seedProd.seedlingQty,
+    seedlingUnit: seedProd.seedlingUnit,
+    seedlingRemaining: seedProd.seedlingRemaining,
+    seedlingSources,
+    gpsStart: null, gpsEnd: null,
+    photo: currentPhoto,
+    workerName,
+    createdAt: Date.now()
+  };
+  const btn = document.getElementById('saveEntryBtn');
+  btn.disabled = true;
+  btn.textContent = '保存中...';
+  try{
+    await addDoc(entriesCol(), entry);
+    showToast(navigator.onLine ? '作業を記録しました' : '端末に保存しました（電波が戻ると自動送信されます）');
+    if(seedlingSources.length) applySeedlingUsage(seedlingSources);
+    resetForm();
+  }catch(e){
+    console.error(e);
+    showToast('保存に失敗しました');
+  }finally{
+    btn.disabled = false;
+    btn.textContent = 'この作業を保存';
+  }
+}
+
+function resetForm(){
+  document.getElementById('inpField').value = '';
+  document.getElementById('inpCrop').value = '';
+  document.getElementById('inpNote').value = '';
+  document.getElementById('inpStart').value = '';
+  document.getElementById('inpEnd').value = '';
+  document.getElementById('inpTaskOther').value = '';
+  document.getElementById('inpTaskOther').style.display = 'none';
+  document.querySelectorAll('.machine-check:checked').forEach(cb=> cb.checked = false);
+  updateCleaningVisibility();
+  document.querySelectorAll('input[name="cleaningMethod"]').forEach(r=> r.checked = false);
+  document.getElementById('cleaningOtherInput').value = '';
+  document.getElementById('cleaningOtherInput').style.display = 'none';
+  clearMaterialRows();
+  document.getElementById('seedlingQtyInput').value = '';
+  document.getElementById('seedlingUnitInput').value = '';
+  clearSeedlingRows();
+  updateSeedlingSectionVisibility();
+  currentPhoto = null;
+  document.getElementById('photoResult').innerHTML = '';
+  document.getElementById('photoBtn').classList.remove('has-photo');
+  document.getElementById('photoBtn').textContent = '📷 写真を撮る・選ぶ';
+  document.getElementById('photoThumb').style.display = 'none';
+  document.getElementById('durationHint').textContent = '';
+}
+
+/* ---------- full entry edit (after work is finished) ---------- */
+function addSeedlingRowFor(s){
+  const rowId = 'sr'+Date.now()+Math.random().toString(36).slice(2,6);
+  const wrap = document.getElementById('seedlingRows');
+  wrap.insertAdjacentHTML('beforeend', seedlingRowHtml(rowId));
+  const rowEl = wrap.querySelector(`[data-row-id="${rowId}"]`);
+  wireSeedlingRow(rowEl);
+  populateSeedlingSelect(rowEl.querySelector('.seed-source'), s.sourceEntryId);
+  rowEl.querySelector('.seed-qty').value = s.qty!=null ? s.qty : '';
+}
+
+async function populateFormForEdit(e){
+  document.getElementById('inpDate').value = e.date || todayStr();
+  document.getElementById('inpField').value = e.field || '';
+  document.getElementById('inpCrop').value = e.crop || '';
+
+  const taskSel = document.getElementById('inpTaskType');
+  const taskOtherInput = document.getElementById('inpTaskOther');
+  const knownTaskTypes = Array.from(taskSel.options).map(o=>o.value);
+  if(knownTaskTypes.includes(e.taskType)){
+    taskSel.value = e.taskType;
+    taskOtherInput.style.display = 'none';
+    taskOtherInput.value = '';
+  } else {
+    taskSel.value = 'その他（自由入力）';
+    taskOtherInput.style.display = 'block';
+    taskOtherInput.value = e.taskType || '';
+  }
+
+  document.querySelectorAll('.machine-check').forEach(cb=>{
+    cb.checked = (e.machines||[]).includes(cb.value);
+  });
+  updateCleaningVisibility();
+
+  document.querySelectorAll('input[name="cleaningMethod"]').forEach(r=> r.checked = false);
+  document.getElementById('cleaningOtherInput').style.display = 'none';
+  document.getElementById('cleaningOtherInput').value = '';
+  if(e.cleaningMethod){
+    const known = ['農業用水にて洗浄','現地にて土落とし'];
+    if(known.includes(e.cleaningMethod)){
+      const r = document.querySelector(`input[name="cleaningMethod"][value="${e.cleaningMethod}"]`);
+      if(r) r.checked = true;
+    } else {
+      const other = document.querySelector('input[name="cleaningMethod"][value="その他"]');
+      if(other) other.checked = true;
+      document.getElementById('cleaningOtherInput').style.display = 'block';
+      document.getElementById('cleaningOtherInput').value = e.cleaningMethod;
+    }
+  }
+
+  clearMaterialRows();
+  (e.materials||[]).forEach(m=>{
+    addMaterialRow();
+    const rows = document.querySelectorAll('.material-row');
+    const rowEl = rows[rows.length-1];
+    const catSel = rowEl.querySelector('.mat-category');
+    catSel.value = m.category || '';
+    populateMaterialSelect(rowEl.querySelector('.mat-name'), catSel.value, m.name);
+    rowEl.querySelector('.mat-amount').value = m.amount!=null ? m.amount : '';
+    rowEl.querySelector('.mat-unit').value = m.unit || '';
+  });
+
+  const isSowing = taskSel.value === '播種・育苗';
+  const isPlanting = taskSel.value === '定植';
+  document.getElementById('seedlingProduceSection').style.display = isSowing ? 'block' : 'none';
+  document.getElementById('seedlingUseSection').style.display = isPlanting ? 'block' : 'none';
+  document.getElementById('seedlingQtyInput').value = e.seedlingQty!=null ? e.seedlingQty : '';
+  document.getElementById('seedlingUnitInput').value = e.seedlingUnit || '';
+
+  clearSeedlingRows();
+  if(isPlanting){
+    await loadSeedlingBatches();
+    (e.seedlingSources||[]).forEach(s=>{
+      if(!seedlingBatchesCache.some(b=>b.id===s.sourceEntryId)){
+        seedlingBatchesCache.push({
+          id: s.sourceEntryId, date:'', field:'', crop:'',
+          seedlingQty:null, seedlingRemaining:null, seedlingUnit:s.unit,
+          _labelOverride: s.label || '(削除済みまたは使い切った記録)'
+        });
+      }
+    });
+    (e.seedlingSources||[]).forEach(s=> addSeedlingRowFor(s));
+  }
+
+  document.getElementById('inpNote').value = e.note || '';
+  currentPhoto = e.photo || null;
+  const photoBtn = document.getElementById('photoBtn');
+  const photoThumb = document.getElementById('photoThumb');
+  if(currentPhoto){
+    photoBtn.textContent = '📷 写真を変更する';
+    photoBtn.classList.add('has-photo');
+    photoThumb.src = currentPhoto;
+    photoThumb.style.display = 'block';
+  } else {
+    photoBtn.textContent = '📷 写真を撮る・選ぶ';
+    photoBtn.classList.remove('has-photo');
+    photoThumb.style.display = 'none';
+  }
+}
+
+async function enterEditMode(entryId, entryData){
+  editReturnTab = currentTab !== 'input' ? currentTab : null;
+  editingEntryId = entryId;
+  editingWasExported = !!entryData.exportedToSheet;
+  switchTab('input');
+  document.getElementById('startWorkSection').style.display = 'none';
+  document.getElementById('endWorkSection').style.display = 'none';
+  document.getElementById('manualTimeSection').style.display = 'block';
+  document.getElementById('inpStart').value = entryData.start || '';
+  document.getElementById('inpEnd').value = entryData.end || '';
+  updateDurationHint();
+  document.getElementById('saveEntryBtn').style.display = 'none';
+  document.getElementById('editBanner').style.display = 'flex';
+  document.getElementById('saveEditBtn').style.display = 'flex';
+  await populateFormForEdit(entryData);
+  document.getElementById('inpStart').value = entryData.start || '';
+  document.getElementById('inpEnd').value = entryData.end || '';
+  updateDurationHint();
+  const card = document.querySelector('#tab-input .card');
+  if(card) card.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function exitEditMode(){
+  editingEntryId = null;
+  editingWasExported = false;
+  document.getElementById('editBanner').style.display = 'none';
+  document.getElementById('saveEditBtn').style.display = 'none';
+  document.getElementById('inpDate').value = todayStr();
+  resetForm();
+  updateFormModeForDate();
+  updateSeedlingSectionVisibility();
+  subscribeToday();
+  const back = editReturnTab;
+  editReturnTab = null;
+  if(back) switchTab(back);
+}
+
+async function saveEntryEdit(){
+  if(!editingEntryId) return;
+  const btn = document.getElementById('saveEditBtn');
+  btn.disabled = true;
+  const entryId = editingEntryId;
+  const seedProd = getSeedlingProduction();
+  const newSeedlingSources = getSeedlingSources();
+  try{
+    const snap = await getDoc(doc(entriesCol(), entryId));
+    if(!snap.exists()) throw new Error('entry-not-found');
+    const oldEntry = snap.data();
+    const oldSources = oldEntry.seedlingSources || [];
+    const oldQty = oldEntry.seedlingQty!=null ? oldEntry.seedlingQty : 0;
+    const newQty = seedProd.seedlingQty!=null ? seedProd.seedlingQty : 0;
+    const qtyDelta = newQty - oldQty;
+
+    const updates = {
+      date: document.getElementById('inpDate').value || oldEntry.date,
+      taskType: currentTaskType(),
+      field: document.getElementById('inpField').value.trim(),
+      crop: document.getElementById('inpCrop').value.trim(),
+      note: document.getElementById('inpNote').value.trim(),
+      machines: getSelectedMachines(),
+      cleaningMethod: getCleaningMethod(),
+      materials: getMaterialsUsage(),
+      seedlingQty: seedProd.seedlingQty,
+      seedlingUnit: seedProd.seedlingUnit,
+      seedlingSources: newSeedlingSources,
+      photo: currentPhoto
+    };
+    if(qtyDelta !== 0) updates.seedlingRemaining = increment(qtyDelta);
+
+    const startVal = document.getElementById('inpStart').value;
+    const endVal = document.getElementById('inpEnd').value;
+    if(!startVal){ showToast('開始時刻を入力してください'); return; }
+    updates.start = startVal;
+    if(endVal){
+      updates.end = endVal;
+      updates.durationMin = calcDuration(startVal, endVal);
+      updates.status = 'done';
+    } else if(oldEntry.status !== 'in_progress'){
+      showToast('終了時刻を入力してください'); return;
+    }
+
+    if(editingWasExported && confirm('この記録はすでにスプレッドシートに転記済みです。\n修正内容を再転記できるよう「未転記」に戻しますか？\n（戻す場合、シート側の古い行は手動で削除してください）')){
+      updates.exportedToSheet = false;
+    }
+
+    await updateDoc(doc(entriesCol(), entryId), updates);
+
+    if(oldSources.length) await restoreSeedlingUsage(oldSources);
+    if(newSeedlingSources.length) await applySeedlingUsage(newSeedlingSources);
+
+    showToast('記録を更新しました');
+    exitEditMode();
+  }catch(e){
+    console.error(e);
+    showToast('更新に失敗しました');
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+/* ---------- Photo ---------- */
+async function handlePhoto(file){
+  if(!file) return;
+  document.getElementById('photoResult').textContent = '処理中...';
+  try{
+    const dataUrl = await compressImage(file);
+    currentPhoto = dataUrl;
+    const btn = document.getElementById('photoBtn');
+    btn.textContent = '📷 写真を変更する';
+    btn.classList.add('has-photo');
+    document.getElementById('photoResult').textContent = '写真を追加しました';
+    const thumb = document.getElementById('photoThumb');
+    thumb.src = dataUrl;
+    thumb.style.display = 'block';
+  }catch(e){
+    document.getElementById('photoResult').textContent = '写真の処理に失敗しました';
+  }
+}
+
+/* ---------- Report tab (live) ---------- */
+function subscribeReport(){
+  const date = document.getElementById('reportDate').value || todayStr();
+  if(unsubReport) unsubReport();
+  const q = query(entriesCol(), where('date','==',date));
+  unsubReport = onSnapshot(q, (snap)=>{
+    const entries = snap.docs.map(d=>({id:d.id, ...d.data(), _pending: d.metadata.hasPendingWrites}));
+    entries.sort((a,b)=> (a.start||'').localeCompare(b.start||''));
+    renderReportFromEntries(date, entries);
+  }, (err)=>console.error('report sync error', err));
+}
+
+function renderReportFromEntries(date, entries){
+  const totalMin = entries.reduce((s,e)=> s + (e.durationMin||0), 0);
+  document.getElementById('statTotalTime').textContent = minutesToHM(totalMin);
+  document.getElementById('statCount').textContent = entries.length + '件';
+
+  const byTask = {};
+  entries.forEach(e=>{
+    if(!byTask[e.taskType]) byTask[e.taskType] = {count:0, min:0};
+    byTask[e.taskType].count++;
+    byTask[e.taskType].min += (e.durationMin||0);
+  });
+  const bl = document.getElementById('breakdownList');
+  const taskKeys = Object.keys(byTask);
+  if(taskKeys.length===0){
+    bl.innerHTML = `<p style="color:var(--ink-soft); font-size:13px;">この日の記録はありません。</p>`;
+  } else {
+    bl.innerHTML = taskKeys.map(k=>{
+      const icon = TASK_ICONS[k] || '📌';
+      return `<div class="breakdown-row"><span>${icon} ${escapeHtml(k)}（${byTask[k].count}件）</span><span class="num">${minutesToHM(byTask[k].min)}</span></div>`;
+    }).join('');
+  }
+
+  const re = document.getElementById('reportEntries');
+  re.innerHTML = entries.length===0 ? '' : `<div class="timeline">${entries.map(e=>entryHtml(e)).join('')}</div>`;
+  bindEntryActions(re, entries);
+
+  window._reportCache = { date, entries, totalMin, byTask };
+}
+
+function buildReportText(){
+  const c = window._reportCache;
+  if(!c) return '';
+  const farmName = document.getElementById('farmNameInput').value || document.getElementById('farmNameDisp').textContent;
+  let txt = `作業日報\n${dispDate(c.date)}\n${farmName}\n\n`;
+  txt += `合計作業時間: ${minutesToHM(c.totalMin)}　作業件数: ${c.entries.length}件\n\n`;
+  txt += `【内訳】\n`;
+  Object.keys(c.byTask).forEach(k=>{
+    txt += `・${k}: ${c.byTask[k].count}件 / ${minutesToHM(c.byTask[k].min)}\n`;
+  });
+  txt += `\n【詳細】\n`;
+  c.entries.forEach(e=>{
+    txt += `${e.start||'--:--'}〜${e.end||'--:--'} ${e.taskType}`;
+    if(e.field) txt += `（${e.field}${e.crop ? '・'+e.crop : ''}）`;
+    if(e.durationMin!=null) txt += ` [${minutesToHM(e.durationMin)}]`;
+    if(e.workerName) txt += ` - ${e.workerName}`;
+    txt += `\n`;
+    if(e.machines && e.machines.length) txt += `  使用機械: ${e.machines.join('、')}\n`;
+    if(e.cleaningMethod) txt += `  洗浄方法: ${e.cleaningMethod}\n`;
+    if(e.materials && e.materials.length){
+      txt += `  使用資材: ${e.materials.map(m=>`${m.name} ${m.amount!=null?m.amount:''}${m.unit||''}`).join('、')}\n`;
+    }
+    if(e.seedlingQty!=null) txt += `  育苗数量: ${e.seedlingQty}${e.seedlingUnit||''}（残り${e.seedlingRemaining!=null?e.seedlingRemaining:e.seedlingQty}${e.seedlingUnit||''}）\n`;
+    if(e.seedlingSources && e.seedlingSources.length){
+      txt += `  苗の由来: ${e.seedlingSources.map(s=>`${s.label||''} ${s.qty!=null?s.qty:''}${s.unit||''}`).join('、')}\n`;
+    }
+    if(e.note) txt += `  メモ: ${e.note}\n`;
+    if(e.gps) txt += `  位置: ${e.gps.lat}, ${e.gps.lon}\n`;
+  });
+  return txt;
+}
+
+function preparePrint(){
+  const c = window._reportCache;
+  if(!c) return;
+  const farmName = document.getElementById('farmNameInput').value || '';
+  let html = `<div class="print-title">作業日報</div>`;
+  html += `<div class="print-sub">${dispDate(c.date)}　${escapeHtml(farmName)}</div>`;
+  html += `<div class="print-stats"><span>合計作業時間: ${minutesToHM(c.totalMin)}</span><span>作業件数: ${c.entries.length}件</span></div>`;
+  c.entries.forEach(e=>{
+    html += `<div class="print-entry"><b>${e.start||'--:--'}〜${e.end||'--:--'} ${escapeHtml(e.taskType)}</b>`;
+    if(e.field) html += ` — ${escapeHtml(e.field)}${e.crop ? '・'+escapeHtml(e.crop) : ''}`;
+    if(e.durationMin!=null) html += ` (${minutesToHM(e.durationMin)})`;
+    if(e.workerName) html += ` / ${escapeHtml(e.workerName)}`;
+    if(e.machines && e.machines.length) html += `<br>使用機械: ${escapeHtml(e.machines.join('、'))}`;
+    if(e.cleaningMethod) html += `<br>洗浄方法: ${escapeHtml(e.cleaningMethod)}`;
+    if(e.materials && e.materials.length){
+      html += `<br>使用資材: ${escapeHtml(e.materials.map(m=>`${m.name} ${m.amount!=null?m.amount:''}${m.unit||''}`).join('、'))}`;
+    }
+    if(e.seedlingQty!=null) html += `<br>育苗数量: ${e.seedlingQty}${escapeHtml(e.seedlingUnit||'')}（残り${e.seedlingRemaining!=null?e.seedlingRemaining:e.seedlingQty}${escapeHtml(e.seedlingUnit||'')}）`;
+    if(e.seedlingSources && e.seedlingSources.length){
+      html += `<br>苗の由来: ${escapeHtml(e.seedlingSources.map(s=>`${s.label||''} ${s.qty!=null?s.qty:''}${s.unit||''}`).join('、'))}`;
+    }
+    if(e.note) html += `<br>メモ: ${escapeHtml(e.note)}`;
+    if(e.gps) html += `<br>位置: ${e.gps.lat}, ${e.gps.lon}`;
+    html += `</div>`;
+  });
+  document.getElementById('printArea').innerHTML = html;
+  window.print();
+}
+
+/* ---------- Google Sheets export ---------- */
+async function ensureSheetsToken(){
+  if(sheetsAccessToken) return sheetsAccessToken;
+  const result = await signInWithPopup(auth, googleProvider);
+  const cred = GoogleAuthProvider.credentialFromResult(result);
+  sheetsAccessToken = cred && cred.accessToken ? cred.accessToken : null;
+  return sheetsAccessToken;
+}
+
+function buildSheetRows(c){
+  return c.entries.map(e=>[
+    e.date || c.date,
+    e.start || '',
+    e.status === 'in_progress' ? '(作業中)' : (e.end || ''),
+    e.durationMin != null ? minutesToHM(e.durationMin) : '',
+    e.workerName || '',
+    e.field || '',
+    e.crop || '',
+    e.taskType || '',
+    (e.machines||[]).join('、'),
+    e.cleaningMethod || '',
+    (e.materials||[]).map(m=>`${m.name} ${m.amount!=null?m.amount:''}${m.unit||''}`).join('、'),
+    e.seedlingQty!=null ? `${e.seedlingQty}${e.seedlingUnit||''}` : '',
+    (e.seedlingSources||[]).map(s=>`${s.label||''} ${s.qty!=null?s.qty:''}${s.unit||''}`).join('、'),
+    e.note || '',
+    (e.gpsStart && e.gpsStart.mapUrl) || '',
+    (e.gpsEnd && e.gpsEnd.mapUrl) || ''
+  ]);
+}
+
+async function appendRowsToSheet(rows){
+  const range = encodeURIComponent(currentSheetRange || 'Sheet1!A1');
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${currentSheetId}/values/${range}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
+  const send = (token)=> fetch(url, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ values: rows })
+  });
+  let token = await ensureSheetsToken();
+  if(!token) throw new Error('no-token');
+  let res = await send(token);
+  if(res.status === 401){
+    // token expired — get a fresh one and retry once
+    sheetsAccessToken = null;
+    token = await ensureSheetsToken();
+    res = await send(token);
+  }
+  if(!res.ok) throw new Error('sheets-api-error-' + res.status);
+}
+
+function sheetErrorMessage(e){
+  if(String(e.message).includes('403')) return '権限がありません。スプレッドシートIDと、ご自身のGoogleアカウントに編集権限があるか確認してください。';
+  if(String(e.message).includes('404')) return 'スプレッドシートが見つかりません。IDをご確認ください。';
+  if(String(e.message).includes('400')) return 'シート名・開始セルの設定をご確認ください（例：シート1!A1）。';
+  return '転記に失敗しました。もう一度お試しください。';
+}
+
+async function exportToSheet(){
+  const status = document.getElementById('sheetExportStatus');
+  const c = window._reportCache;
+  if(!c || c.entries.length===0){
+    status.textContent = 'この日の記録がありません。';
+    return;
+  }
+  const inProgressCount = c.entries.filter(e => e.status === 'in_progress' && !e.exportedToSheet).length;
+  const pending = c.entries.filter(e => !e.exportedToSheet && e.status !== 'in_progress');
+  if(pending.length===0){
+    status.textContent = inProgressCount>0 ? '作業中の記録は、終了してから転記してください。' : 'この日の記録はすべて転記済みです。';
+    return;
+  }
+  if(!currentSheetId){
+    status.textContent = '⚙設定からスプレッドシートIDを登録してください。';
+    return;
+  }
+  const btn = document.getElementById('sheetExportBtn');
+  btn.disabled = true;
+  status.textContent = '転記中...';
+  try{
+    const rows = buildSheetRows({date: c.date, entries: pending});
+    await appendRowsToSheet(rows);
+    // mark these entries as exported so a later click won't duplicate them
+    await Promise.all(pending.map(e =>
+      updateDoc(doc(entriesCol(), e.id), {exportedToSheet: true}).catch(err=>console.error('mark exported failed', err))
+    ));
+    const skipped = c.entries.length - pending.length - inProgressCount;
+    status.textContent = `✅ ${pending.length}件を転記しました（${dispDate(c.date)}）${skipped>0 ? `／${skipped}件は転記済みのためスキップ` : ''}${inProgressCount>0 ? `／作業中${inProgressCount}件は未転記` : ''}`;
+    showToast('スプレッドシートに転記しました');
+  }catch(e){
+    console.error(e);
+    status.textContent = sheetErrorMessage(e);
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+/* ---------- 期間指定のまとめて転記 ---------- */
+function dateToStr(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+function setQuickRange(kind){
+  const now = new Date();
+  let from, to;
+  if(kind==='thisMonth'){ from = new Date(now.getFullYear(), now.getMonth(), 1); to = now; }
+  else if(kind==='lastMonth'){ from = new Date(now.getFullYear(), now.getMonth()-1, 1); to = new Date(now.getFullYear(), now.getMonth(), 0); }
+  else { from = new Date(now.getFullYear(), now.getMonth(), now.getDate()-6); to = now; }
+  document.getElementById('rangeFrom').value = dateToStr(from);
+  document.getElementById('rangeTo').value = dateToStr(to);
+  document.getElementById('rangeExportStatus').textContent = '';
+}
+
+async function exportRangeToSheet(){
+  const status = document.getElementById('rangeExportStatus');
+  let from = document.getElementById('rangeFrom').value;
+  let to = document.getElementById('rangeTo').value;
+  if(!from || !to){ status.textContent = '開始日と終了日を指定してください。'; return; }
+  if(from > to){ [from, to] = [to, from]; }
+  if(!currentSheetId){ status.textContent = '⚙設定からスプレッドシートIDを登録してください。'; return; }
+
+  const btn = document.getElementById('rangeExportBtn');
+  btn.disabled = true;
+  status.textContent = '記録を集めています...';
+  try{
+    const q = query(entriesCol(), where('date','>=',from), where('date','<=',to));
+    const snap = await getDocs(q);
+    const all = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    if(all.length===0){ status.textContent = 'この期間の記録はありません。'; return; }
+    const inProgressCount = all.filter(e=> e.status==='in_progress' && !e.exportedToSheet).length;
+    const pending = all.filter(e=> !e.exportedToSheet && e.status!=='in_progress')
+      .sort((a,b)=> (a.date||'').localeCompare(b.date||'') || (a.start||'').localeCompare(b.start||''));
+    const alreadyCount = all.filter(e=> e.exportedToSheet).length;
+    if(pending.length===0){
+      status.textContent = `未転記の記録はありません（転記済み${alreadyCount}件${inProgressCount>0?`／作業中${inProgressCount}件`:''}）。`;
+      return;
+    }
+    const dayCount = new Set(pending.map(e=>e.date)).size;
+    if(!confirm(`${dispDate(from)} 〜 ${dispDate(to)}\n未転記の記録 ${pending.length}件（${dayCount}日分）を転記します。よろしいですか？`)){
+      status.textContent = '';
+      return;
+    }
+    status.textContent = '転記中...';
+    const rows = buildSheetRows({date:'', entries: pending});
+    await appendRowsToSheet(rows);
+    await Promise.all(pending.map(e =>
+      updateDoc(doc(entriesCol(), e.id), {exportedToSheet: true}).catch(err=>console.error('mark exported failed', err))
+    ));
+    status.textContent = `✅ ${pending.length}件（${dayCount}日分）を転記しました${alreadyCount>0 ? `／${alreadyCount}件は転記済みのためスキップ` : ''}${inProgressCount>0 ? `／作業中${inProgressCount}件は未転記` : ''}`;
+    showToast('まとめて転記しました');
+  }catch(e){
+    console.error(e);
+    status.textContent = sheetErrorMessage(e);
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+/* ---------- History ---------- */
+async function renderHistoryTab(){
+  const el = document.getElementById('historyList');
+  el.innerHTML = `<div class="empty">読み込み中...</div>`;
+  try{
+    const q = query(entriesCol(), orderBy('date','desc'), limit(2000));
+    const snap = await getDocs(q);
+    const byDate = {};
+    snap.docs.forEach(d=>{
+      const e = d.data();
+      if(!byDate[e.date]) byDate[e.date] = {count:0, totalMin:0};
+      byDate[e.date].count++;
+      byDate[e.date].totalMin += (e.durationMin||0);
+    });
+    const dates = Object.keys(byDate).sort().reverse();
+    if(dates.length===0){
+      el.innerHTML = `<div class="empty"><div class="icon">📭</div>まだ記録がありません。</div>`;
+      return;
+    }
+    el.innerHTML = dates.map(d=>`
+      <div class="history-item" data-date="${d}">
+        <div>
+          <div class="history-date">${dispDate(d)}</div>
+          <div class="history-sub">${byDate[d].count}件の記録 ／ 合計 ${minutesToHM(byDate[d].totalMin)}</div>
+        </div>
+        <div class="history-arrow">›</div>
+      </div>`).join('');
+    el.querySelectorAll('.history-item').forEach(item=>{
+      item.addEventListener('click', ()=>{
+        document.getElementById('reportDate').value = item.dataset.date;
+        switchTab('report');
+      });
+    });
+  }catch(e){
+    console.error(e);
+    el.innerHTML = `<div class="empty">履歴の取得に失敗しました。電波の良い場所でもう一度お試しください。</div>`;
+  }
+}
+
+/* ---------- tab switching ---------- */
+function switchTab(name){
+  currentTab = name;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  document.querySelectorAll('.tabbar button').forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
+  if(name==='report') subscribeReport();
+  if(name==='history') renderHistoryTab();
+}
+
+function updateDurationHint(){
+  const start = document.getElementById('inpStart').value;
+  const end = document.getElementById('inpEnd').value;
+  const dur = calcDuration(start, end);
+  document.getElementById('durationHint').textContent = dur!=null ? `作業時間: ${minutesToHM(dur)}` : '';
+}
+
+/* ---------- events (bound once) ---------- */
+let eventsBound = false;
+function bindTabEvents(){
+  if(eventsBound) return;
+  eventsBound = true;
+
+  document.querySelectorAll('.tabbar button').forEach(b=>{
+    b.addEventListener('click', ()=> switchTab(b.dataset.tab));
+  });
+
+  document.getElementById('settingsToggle').addEventListener('click', ()=>{
+    document.getElementById('settingsPanel').classList.toggle('open');
+  });
+  document.getElementById('saveSettingsBtn').addEventListener('click', async ()=>{
+    const newFarmName = document.getElementById('farmNameInput').value.trim();
+    const newWorkerName = document.getElementById('workerNameInput').value.trim();
+    const newFarmCode = document.getElementById('farmCodeInput').value.trim();
+    let newSheetId = document.getElementById('sheetIdInput').value.trim();
+    const newSheetRange = document.getElementById('sheetRangeInput').value.trim() || 'Sheet1!A1';
+    const urlMatch = newSheetId.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+    if(urlMatch) newSheetId = urlMatch[1];
+    if(!newWorkerName || !newFarmCode){
+      showToast('表示名と農場コードを入力してください');
+      return;
+    }
+    const codeChanged = newFarmCode !== farmCode;
+    workerName = newWorkerName;
+    farmCode = newFarmCode;
+    const defaultName = currentUser ? (currentUser.displayName || currentUser.email || '') : '';
+    saveDeviceConfig({farmCode, workerNameOverride: newWorkerName !== defaultName ? newWorkerName : ''});
+    await saveFarmName(newFarmName);
+    await saveSheetSettings(newSheetId, newSheetRange);
+    document.getElementById('sheetIdInput').value = newSheetId;
+    document.getElementById('settingsPanel').classList.remove('open');
+    showToast('設定を保存しました');
+    if(codeChanged){
+      subscribeFields();
+      subscribeSettings();
+      subscribeToday();
+      if(currentTab==='report') subscribeReport();
+      if(currentTab==='history') renderHistoryTab();
+    }
+  });
+  document.getElementById('logoutBtn').addEventListener('click', async ()=>{
+    if(!confirm('ログアウトします。この端末の農場コードの設定もリセットされます。よろしいですか？')) return;
+    try{ await signOut(auth); }catch(e){ console.error(e); }
+    localStorage.removeItem('hatanote-device-config');
+    localStorage.removeItem('hatanote-active-entry');
+    location.reload();
+  });
+  document.getElementById('googleLoginBtn').addEventListener('click', async ()=>{
+    const status = document.getElementById('setupStatus');
+    status.textContent = 'ログイン中...';
+    try{
+      const result = await signInWithPopup(auth, googleProvider);
+      const cred = GoogleAuthProvider.credentialFromResult(result);
+      if(cred && cred.accessToken) sheetsAccessToken = cred.accessToken;
+      status.textContent = '';
+    }catch(e){
+      console.error(e);
+      if(e.code === 'auth/popup-blocked'){
+        status.textContent = 'ポップアップがブロックされました。ブラウザの設定でこのサイトのポップアップを許可してください。';
+      } else if(e.code === 'auth/popup-closed-by-user'){
+        status.textContent = '';
+      } else if(e.code === 'auth/unauthorized-domain'){
+        status.textContent = 'このサイトのドメインがFirebaseで承認されていません（承認済みドメインの設定をご確認ください）。';
+      } else {
+        status.textContent = 'ログインに失敗しました。もう一度お試しください。';
+      }
+    }
+  });
+  document.getElementById('setupFarmCode').addEventListener('input', updateAuthUI);
+
+  document.getElementById('inpDate').addEventListener('change', ()=>{
+    if(editingEntryId) return;
+    updateFormModeForDate();
+    subscribeToday();
+  });
+  document.getElementById('inpStart').addEventListener('change', updateDurationHint);
+  document.getElementById('inpEnd').addEventListener('change', updateDurationHint);
+
+  document.getElementById('inpTaskType').addEventListener('change', (e)=>{
+    document.getElementById('inpTaskOther').style.display = e.target.value==='その他（自由入力）' ? 'block' : 'none';
+    updateSeedlingSectionVisibility();
+  });
+  document.getElementById('addSeedlingRowBtn').addEventListener('click', addSeedlingRow);
+
+  document.getElementById('startWorkBtn').addEventListener('click', startWork);
+  document.getElementById('endWorkBtn').addEventListener('click', stopWork);
+
+  document.getElementById('manageFieldsBtn').addEventListener('click', ()=>{
+    document.getElementById('fieldManager').classList.toggle('open');
+  });
+  document.getElementById('addFieldBtn').addEventListener('click', async ()=>{
+    const input = document.getElementById('newFieldInput');
+    const name = input.value.trim();
+    if(!name){ input.focus(); return; }
+    await addField(name);
+    input.value = '';
+    document.getElementById('inpField').value = name;
+    showToast('圃場を追加しました');
+  });
+  document.getElementById('newFieldInput').addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){ e.preventDefault(); document.getElementById('addFieldBtn').click(); }
+  });
+
+  document.getElementById('manageMachinesBtn').addEventListener('click', ()=>{
+    document.getElementById('machineManager').classList.toggle('open');
+  });
+  document.getElementById('addMachineBtn').addEventListener('click', async ()=>{
+    const input = document.getElementById('newMachineInput');
+    const name = input.value.trim();
+    if(!name){ input.focus(); return; }
+    await addMachine(name);
+    input.value = '';
+    showToast('機械を追加しました');
+  });
+  document.getElementById('newMachineInput').addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){ e.preventDefault(); document.getElementById('addMachineBtn').click(); }
+  });
+
+  document.querySelectorAll('input[name="cleaningMethod"]').forEach(r=>{
+    r.addEventListener('change', ()=>{
+      document.getElementById('cleaningOtherInput').style.display = r.value==='その他' && r.checked ? 'block' : 'none';
+    });
+  });
+
+  document.getElementById('addMaterialRowBtn').addEventListener('click', addMaterialRow);
+  document.getElementById('manageMaterialsBtn').addEventListener('click', ()=>{
+    document.getElementById('materialManager').classList.toggle('open');
+  });
+  document.getElementById('addCategoryBtn').addEventListener('click', async ()=>{
+    const input = document.getElementById('newCategoryInput');
+    await addMaterialCategory(input.value);
+    input.value = '';
+  });
+  document.getElementById('newCategoryInput').addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){ e.preventDefault(); document.getElementById('addCategoryBtn').click(); }
+  });
+
+  document.getElementById('photoBtn').addEventListener('click', ()=>{
+    document.getElementById('photoInput').click();
+  });
+  document.getElementById('photoInput').addEventListener('change', (e)=>{
+    handlePhoto(e.target.files[0]);
+  });
+
+  document.getElementById('saveEntryBtn').addEventListener('click', saveManualEntry);
+  document.getElementById('saveEditBtn').addEventListener('click', saveEntryEdit);
+  document.getElementById('cancelEditBtn').addEventListener('click', exitEditMode);
+
+  document.getElementById('reportDate').addEventListener('change', subscribeReport);
+  document.getElementById('printBtn').addEventListener('click', preparePrint);
+  document.getElementById('sheetExportBtn').addEventListener('click', exportToSheet);
+  document.getElementById('rangeExportBtn').addEventListener('click', exportRangeToSheet);
+  document.querySelectorAll('[data-range]').forEach(b=>{
+    b.addEventListener('click', ()=> setQuickRange(b.dataset.range));
+  });
+  document.getElementById('copyBtn').addEventListener('click', async ()=>{
+    const txt = buildReportText();
+    try{
+      await navigator.clipboard.writeText(txt);
+      showToast('テキストをコピーしました');
+    }catch(e){
+      showToast('コピーできませんでした');
+    }
+  });
+
+  document.getElementById('setupSaveBtn').addEventListener('click', handleSetupSave);
+
+  window.addEventListener('online', setSyncStatus);
+  window.addEventListener('offline', setSyncStatus);
+}
+
+/* ---------- entry point ---------- */
+(async function main(){
+  bindTabEvents();
+  initFirebase();
+
+  onAuthStateChanged(auth, async (user)=>{
+    currentUser = user;
+    updateAuthUI();
+
+    if(appStarted) return;
+
+    if(user){
+      const cfg = loadDeviceConfig();
+      if(cfg && cfg.farmCode){
+        farmCode = cfg.farmCode;
+        workerName = cfg.workerNameOverride || user.displayName || user.email || '匿名';
+        document.getElementById('workerNameInput').value = workerName;
+        document.getElementById('farmCodeInput').value = farmCode;
+        hideSetupScreen();
+        appStarted = true;
+        await startApp();
+      } else {
+        showSetupScreen(cfg ? cfg.farmCode : '');
+      }
+    } else {
+      showSetupScreen();
+    }
+  });
+})();
+</script>
+
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('service-worker.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
