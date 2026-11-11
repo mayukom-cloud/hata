@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hatanote-v17';
+const CACHE_NAME = 'hatanote-v18';
 const FIREBASE_VERSION = '12.15.0';
 const APP_SHELL = [
   './',
@@ -14,7 +14,9 @@ const APP_SHELL = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL))
+    caches.open(CACHE_NAME).then((cache) =>
+      cache.addAll(APP_SHELL.map((u) => new Request(u, { cache: 'reload' })))
+    )
   );
   self.skipWaiting();
 });
@@ -30,6 +32,22 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+
+  // 画面本体（HTML）はネット優先：電波があれば常に最新版、3秒以内に届かなければ保存版を表示
+  if (event.request.mode === 'navigate') {
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE_NAME);
+      const cached = (await cache.match(event.request)) || (await cache.match('./index.html'));
+      const network = fetch(event.request, { cache: 'no-store' }).then((res) => {
+        if (res && res.status === 200) cache.put(event.request, res.clone());
+        return res;
+      });
+      if (!cached) return network;
+      const timeout = new Promise((resolve) => setTimeout(() => resolve(cached), 3000));
+      return Promise.race([network.catch(() => cached), timeout]);
+    })());
+    return;
+  }
 
   event.respondWith(
     caches.match(event.request).then((cached) => {

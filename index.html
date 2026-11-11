@@ -397,6 +397,10 @@ main{padding:16px; max-width:640px; margin:0 auto;}
         <span>✏️ この記録を編集しています</span>
         <button type="button" id="cancelEditBtn">キャンセル</button>
       </div>
+      <div class="edit-banner" id="addBanner" style="display:none;">
+        <span id="addBannerText">📅 過去の日付の作業を登録しています</span>
+        <button type="button" id="cancelAddBtn">戻る</button>
+      </div>
       <div class="field">
         <label>作業日</label>
         <input type="date" id="inpDate">
@@ -551,6 +555,7 @@ main{padding:16px; max-width:640px; margin:0 auto;}
       <div class="date-picker-row">
         <input type="date" id="reportDate">
       </div>
+      <button class="btn btn-outline btn-block" id="addEntryForDateBtn" type="button" style="margin-bottom:14px;">＋ この日の作業を登録する</button>
       <div class="stat-grid">
         <div class="stat-box">
           <div class="label">合計作業時間</div>
@@ -703,6 +708,7 @@ let seedlingBatchesCache = [];
 let activeEntryId = null;
 let editingEntryId = null;
 let editReturnTab = null;
+let addReturnTab = null;
 let editingWasExported = false;
 let activeEntryStartAt = null;
 let timerInterval = null;
@@ -1614,10 +1620,41 @@ function updateTimerText(){
 }
 
 /* ---------- manual entry (backfill past dates) ---------- */
+/* ---------- 日報・履歴から過去日の作業を登録 ---------- */
+function startAddForDate(){
+  const date = document.getElementById('reportDate').value || todayStr();
+  if(activeEntryId){ showToast('作業中の記録を終了してから登録してください'); return; }
+  if(editingEntryId){ editReturnTab = null; exitEditMode(); }
+  addReturnTab = currentTab;
+  switchTab('input');
+  resetForm();
+  document.getElementById('inpDate').value = date;
+  updateFormModeForDate();
+  updateSeedlingSectionVisibility();
+  subscribeToday();
+  document.getElementById('addBannerText').textContent = `📅 ${dispDate(date)}の作業を登録しています`;
+  document.getElementById('addBanner').style.display = 'flex';
+  const card = document.querySelector('#tab-input .card');
+  if(card) card.scrollIntoView({behavior:'smooth', block:'start'});
+}
+function finishAddForDate(){
+  if(!addReturnTab) return;
+  const back = addReturnTab;
+  addReturnTab = null;
+  document.getElementById('addBanner').style.display = 'none';
+  document.getElementById('inpDate').value = todayStr();
+  resetForm();
+  updateFormModeForDate();
+  updateSeedlingSectionVisibility();
+  subscribeToday();
+  switchTab(back);
+}
+
 async function saveManualEntry(){
   const date = document.getElementById('inpDate').value || todayStr();
   const start = document.getElementById('inpStart').value;
   const end = document.getElementById('inpEnd').value;
+  if(!start || !end){ showToast('開始時刻と終了時刻を入力してください'); return; }
   const seedProd = getSeedlingProduction();
   const seedlingSources = getSeedlingSources();
   const entry = {
@@ -1649,6 +1686,7 @@ async function saveManualEntry(){
     showToast(navigator.onLine ? '作業を記録しました' : '端末に保存しました（電波が戻ると自動送信されます）');
     if(seedlingSources.length) applySeedlingUsage(seedlingSources);
     resetForm();
+    finishAddForDate();
   }catch(e){
     console.error(e);
     showToast('保存に失敗しました');
@@ -1785,6 +1823,7 @@ async function populateFormForEdit(e){
 }
 
 async function enterEditMode(entryId, entryData){
+  if(addReturnTab){ addReturnTab = null; document.getElementById('addBanner').style.display = 'none'; }
   editReturnTab = currentTab !== 'input' ? currentTab : null;
   editingEntryId = entryId;
   editingWasExported = !!entryData.exportedToSheet;
@@ -2362,6 +2401,8 @@ function bindTabEvents(){
   });
 
   document.getElementById('saveEntryBtn').addEventListener('click', saveManualEntry);
+  document.getElementById('addEntryForDateBtn').addEventListener('click', startAddForDate);
+  document.getElementById('cancelAddBtn').addEventListener('click', finishAddForDate);
   document.getElementById('saveEditBtn').addEventListener('click', saveEntryEdit);
   document.getElementById('cancelEditBtn').addEventListener('click', exitEditMode);
 
